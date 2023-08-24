@@ -185,7 +185,7 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 	// create tree
 	tree, _, err := client.Git.CreateTree(context.Background(), repo.Namespace, repo.Name, base, entries)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create tree")
+		return fmt.Errorf("failed to create tree: %w", err)
 	}
 
 	// commit tree
@@ -195,16 +195,28 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 		Parents: []*github.Commit{{SHA: github.String(base)}},
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create commit")
+		return fmt.Errorf("failed to create commit: %w", err)
 	}
 
-	// update reference
-	_, _, err = client.Git.UpdateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
-		Ref: github.String("refs/heads/" + branch),
-		Object: &github.GitObject{
-			SHA: commit.SHA,
-		},
-	}, true)
+	// create or update remote reference
+	_, _, getRefErr := client.Git.GetRef(context.Background(), repo.Namespace, repo.Name, "refs/heads/"+branch)
+	if getRefErr != nil {
+		_, _, createRefErr := client.Git.CreateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
+			Ref:    github.String("refs/heads/" + branch),
+			Object: &github.GitObject{SHA: commit.SHA},
+		})
+		if createRefErr != nil {
+			return fmt.Errorf("failed to create remote branch reference: %w", createRefErr)
+		}
+	} else {
+		_, _, refErr := client.Git.UpdateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
+			Ref:    github.String("refs/heads/" + branch),
+			Object: &github.GitObject{SHA: commit.SHA},
+		}, true)
+		if refErr != nil {
+			return fmt.Errorf("failed to update reference: %w", refErr)
+		}
+	}
 
 	return nil
 }
