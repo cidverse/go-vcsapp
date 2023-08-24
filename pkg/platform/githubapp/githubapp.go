@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/cidverse/vcs-app/pkg/platform/api"
@@ -230,6 +231,50 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create merge request: %w", err)
+	}
+
+	return nil
+}
+
+func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, id string, sourceBranch string, title string, description string) error {
+	client := repository.InternalClient.(*github.Client)
+	description = fmt.Sprintf("%s\n\n<!--vcs-app-id:%s-->", description, id)
+
+	// search merge request
+	prs, _, err := client.PullRequests.List(context.Background(), repository.Namespace, repository.Name, &github.PullRequestListOptions{
+		Head:  sourceBranch,
+		Base:  repository.DefaultBranch,
+		State: "open",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list pull requests: %w", err)
+	}
+	var existingPR *github.PullRequest
+	for _, pr := range prs {
+		if pr.Body != nil && strings.Contains(*pr.Body, fmt.Sprintf("<!--vcs-app-id:%s-->", id)) {
+			existingPR = pr
+			break
+		}
+	}
+
+	if existingPR != nil {
+		_, _, updateErr := client.PullRequests.Edit(context.Background(), repository.Namespace, repository.Name, existingPR.GetNumber(), &github.PullRequest{
+			Title: github.String(title),
+			Body:  github.String(description),
+		})
+		if updateErr != nil {
+			return fmt.Errorf("failed to update pull request: %w", updateErr)
+		}
+	} else {
+		_, _, createErr := client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
+			Base:  github.String(repository.DefaultBranch),
+			Head:  github.String(sourceBranch),
+			Title: github.String(title),
+			Body:  github.String(description),
+		})
+		if createErr != nil {
+			return fmt.Errorf("failed to create merge request: %w", createErr)
+		}
 	}
 
 	return nil

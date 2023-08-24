@@ -2,6 +2,7 @@ package gitlabuser
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cidverse/vcs-app/pkg/platform/api"
@@ -161,6 +162,51 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create merge request: %w", err)
+	}
+
+	return nil
+}
+
+func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, id string, sourceBranch string, title string, description string) error {
+	client := repository.InternalClient.(*gitlab.Client)
+	description = fmt.Sprintf("%s\n\n<!--vcs-app-id:%s-->", description, id)
+
+	// Search for an existing merge request with the same source branch
+	mrs, _, err := client.MergeRequests.ListProjectMergeRequests(repository.Id, &gitlab.ListProjectMergeRequestsOptions{
+		SourceBranch: gitlab.String(sourceBranch),
+		State:        gitlab.String("opened"),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list merge requests: %w", err)
+	}
+	var existingMR *gitlab.MergeRequest
+	for _, mr := range mrs {
+		if strings.Contains(mr.Description, fmt.Sprintf("<!--vcs-app-id:%s-->", id)) {
+			existingMR = mr
+			break
+		}
+	}
+
+	if existingMR != nil {
+		_, _, updateErr := client.MergeRequests.UpdateMergeRequest(repository.Id, existingMR.IID, &gitlab.UpdateMergeRequestOptions{
+			Title:       &title,
+			Description: &description,
+		})
+		if updateErr != nil {
+			return fmt.Errorf("failed to update merge request: %w", updateErr)
+		}
+	} else {
+		_, _, createErr := client.MergeRequests.CreateMergeRequest(repository.Id, &gitlab.CreateMergeRequestOptions{
+			Title:              &title,
+			Description:        &description,
+			SourceBranch:       &sourceBranch,
+			TargetBranch:       &repository.DefaultBranch,
+			RemoveSourceBranch: gitlab.Bool(true),
+			Squash:             gitlab.Bool(true),
+		})
+		if createErr != nil {
+			return fmt.Errorf("failed to create merge request: %w", createErr)
+		}
 	}
 
 	return nil
