@@ -97,13 +97,16 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 	return result, nil
 }
 
-func (n Platform) MergeRequests(repo api.Repository) ([]api.MergeRequest, error) {
+func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
 	var result []api.MergeRequest
 
 	var pullRequests []*github.PullRequest
 	opts := github.ListOptions{PerPage: pageSize}
 	for {
 		data, resp, err := repo.InternalClient.(*github.Client).PullRequests.List(context.Background(), repo.Namespace, repo.Name, &github.PullRequestListOptions{
+			Head:        options.SourceBranch,
+			Base:        options.TargetBranch,
+			State:       options.State,
 			ListOptions: opts,
 		})
 		if err != nil {

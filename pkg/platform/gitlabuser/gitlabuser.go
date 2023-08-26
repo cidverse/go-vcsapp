@@ -75,11 +75,14 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 	return result, nil
 }
 
-func (n Platform) MergeRequests(repo api.Repository) ([]api.MergeRequest, error) {
+func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
 	var result []api.MergeRequest
 
 	var mergeRequests []*gitlab.MergeRequest
 	opts := &gitlab.ListProjectMergeRequestsOptions{
+		SourceBranch: gitlab.String(options.SourceBranch),
+		TargetBranch: gitlab.String(options.TargetBranch),
+		State:        gitlab.String(options.State),
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},

@@ -44,19 +44,11 @@ func ExecuteTask(platform api.Platform, task taskcommon.Task, repo api.Repositor
 	}
 	defer os.RemoveAll(tempDir)
 
-	// query additional information
-	pullRequests, err := platform.MergeRequests(repo)
-	if err != nil {
-		return fmt.Errorf("failed to list pull requests: %w", err)
-	}
-	log.Info().Int("merge_requests", len(pullRequests)).Str("default-branch", repo.DefaultBranch).Strs("branches", repo.Branches).Msg("executing tasks for repository " + repo.Namespace + "/" + repo.Name)
-
 	// execute task
 	err = task.Execute(taskcommon.TaskContext{
-		Directory:    tempDir,
-		Platform:     platform,
-		Repository:   repo,
-		PullRequests: pullRequests,
+		Directory:  tempDir,
+		Platform:   platform,
+		Repository: repo,
 	})
 	if err != nil {
 		return err

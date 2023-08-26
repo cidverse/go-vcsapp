@@ -5,10 +5,9 @@ import (
 )
 
 type TaskContext struct {
-	Directory    string
-	Platform     api.Platform
-	Repository   api.Repository
-	PullRequests []api.MergeRequest
+	Directory  string
+	Platform   api.Platform
+	Repository api.Repository
 }
 
 // Task provides a interface to implement tasks

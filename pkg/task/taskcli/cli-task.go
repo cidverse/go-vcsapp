@@ -24,14 +24,6 @@ func (n CLITask) Name() string {
 
 // Execute runs the task
 func (n CLITask) Execute(ctx taskcommon.TaskContext) error {
-	// check if merge request already exists
-	for _, pr := range ctx.PullRequests {
-		if pr.SourceBranch == n.branchNameTemplate {
-			log.Info().Msg("merge request already exists, skipping")
-			//return nil
-		}
-	}
-
 	// clone repository
 	vcsClient, err := vcs.GetVCSClientCloneRemote(ctx.Repository.CloneURL, ctx.Directory, ctx.Repository.DefaultBranch)
 	if err != nil {

@@ -11,7 +11,7 @@ type Platform interface {
 	// Repositories returns a list of all repositories we have access to
 	Repositories() ([]Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
-	MergeRequests(repository Repository) ([]MergeRequest, error)
+	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
 	// AuthMethod returns the authentication method used by the platform, required to push changes
 	AuthMethod(repository Repository) githttp.AuthMethod
 	// CommitAndPush creates a commit in the repository and pushes it to the remote
@@ -52,4 +52,10 @@ type MergeRequest struct {
 type Author struct {
 	Name  string `yaml:"name"`
 	Email string `yaml:"email"`
+}
+
+type MergeRequestSearchOptions struct {
+	SourceBranch string
+	TargetBranch string
+	State        string
 }
