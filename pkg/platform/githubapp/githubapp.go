@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/cidverse/vcs-app/pkg/platform/api"
@@ -239,9 +238,9 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 	return nil
 }
 
-func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, id string, sourceBranch string, title string, description string) error {
+func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBranch string, title string, description string, key string) error {
 	client := repository.InternalClient.(*github.Client)
-	description = fmt.Sprintf("%s\n\n<!--vcs-app-id:%s-->", description, id)
+	description = fmt.Sprintf("%s\n\n<!--vcs-merge-request-key:%s-->", description, key)
 
 	// search merge request
 	prs, _, err := client.PullRequests.List(context.Background(), repository.Namespace, repository.Name, &github.PullRequestListOptions{
@@ -254,13 +253,12 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, id strin
 	}
 	var existingPR *github.PullRequest
 	for _, pr := range prs {
-		if pr.Body != nil && strings.Contains(*pr.Body, fmt.Sprintf("<!--vcs-app-id:%s-->", id)) {
-			existingPR = pr
-			break
-		}
+		existingPR = pr
+		break
 	}
 
 	if existingPR != nil {
+		log.Debug().Int64("id", existingPR.GetID()).Int("number", existingPR.GetNumber()).Msg("found existing pull request, updating")
 		_, _, updateErr := client.PullRequests.Edit(context.Background(), repository.Namespace, repository.Name, existingPR.GetNumber(), &github.PullRequest{
 			Title: github.String(title),
 			Body:  github.String(description),
@@ -269,6 +267,7 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, id strin
 			return fmt.Errorf("failed to update pull request: %w", updateErr)
 		}
 	} else {
+		log.Debug().Str("source_branch", sourceBranch).Str("target_branch", repository.DefaultBranch).Str("title", title).Msg("no existing pull request found, creating")
 		_, _, createErr := client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
 			Base:  github.String(repository.DefaultBranch),
 			Head:  github.String(sourceBranch),

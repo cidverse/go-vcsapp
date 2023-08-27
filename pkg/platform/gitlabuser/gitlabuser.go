@@ -2,7 +2,6 @@ package gitlabuser
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cidverse/vcs-app/pkg/platform/api"
@@ -170,13 +169,14 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 	return nil
 }
 
-func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, id string, sourceBranch string, title string, description string) error {
+func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBranch string, title string, description string, key string) error {
 	client := repository.InternalClient.(*gitlab.Client)
-	description = fmt.Sprintf("%s\n\n<!--vcs-app-id:%s-->", description, id)
+	description = fmt.Sprintf("%s\n\n<!--vcs-merge-request-key:%s-->", description, key)
 
 	// Search for an existing merge request with the same source branch
 	mrs, _, err := client.MergeRequests.ListProjectMergeRequests(repository.Id, &gitlab.ListProjectMergeRequestsOptions{
 		SourceBranch: gitlab.String(sourceBranch),
+		TargetBranch: gitlab.String(repository.DefaultBranch),
 		State:        gitlab.String("opened"),
 	})
 	if err != nil {
@@ -184,10 +184,8 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, id strin
 	}
 	var existingMR *gitlab.MergeRequest
 	for _, mr := range mrs {
-		if strings.Contains(mr.Description, fmt.Sprintf("<!--vcs-app-id:%s-->", id)) {
-			existingMR = mr
-			break
-		}
+		existingMR = mr
+		break
 	}
 
 	if existingMR != nil {

@@ -19,7 +19,7 @@ type Platform interface {
 	// CreateMergeRequest creates a merge request
 	CreateMergeRequest(repository Repository, sourceBranch string, title string, description string) error
 	// CreateOrUpdateMergeRequest creates a merge request
-	CreateOrUpdateMergeRequest(repository Repository, id string, sourceBranch string, title string, description string) error
+	CreateOrUpdateMergeRequest(repository Repository, sourceBranch string, title string, description string, key string) error
 }
 
 type Repository struct {
