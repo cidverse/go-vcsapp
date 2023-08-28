@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.6.0
-	github.com/cidverse/go-vcs v0.0.0-20230823204903-e1dbe84dd628
+	github.com/cidverse/go-vcs v0.0.0-20230828222442-5c163d63715f
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/google/go-github/v54 v54.0.0
 	github.com/rs/zerolog v1.30.0
@@ -15,7 +15,7 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20230717121422-5aa5874ade95 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
