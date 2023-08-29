@@ -20,6 +20,8 @@ type Platform interface {
 	CreateMergeRequest(repository Repository, sourceBranch string, title string, description string) error
 	// CreateOrUpdateMergeRequest creates a merge request
 	CreateOrUpdateMergeRequest(repository Repository, sourceBranch string, title string, description string, key string) error
+	// FileContent returns the content of a file
+	FileContent(repository Repository, branch string, path string) (string, error)
 }
 
 type Repository struct {

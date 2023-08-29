@@ -166,13 +166,16 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 	}
 	for file := range status {
 		// read file content
-		content, err := os.ReadFile(filepath.Join(dir, file))
-		if err != nil {
+		content, readErr := os.ReadFile(filepath.Join(dir, file))
+		if readErr != nil {
 			return fmt.Errorf("failed to read file: %w", err)
 		}
 
 		// get permissions
-		fileStats, err := os.Stat(filepath.Join(dir, file))
+		fileStats, statsErr := os.Stat(filepath.Join(dir, file))
+		if statsErr != nil {
+			return fmt.Errorf("failed to get file stats: %w", err)
+		}
 		mode := "100644"
 		if fileStats.Mode()&os.FileMode(0111) != 0 {
 			mode = "100744"
@@ -253,12 +256,19 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 	}
 	var existingPR *github.PullRequest
 	for _, pr := range prs {
+		if sourceBranch != "" && pr.GetHead().GetRef() != sourceBranch {
+			continue
+		}
+		if repository.DefaultBranch != "" && pr.GetBase().GetRef() != repository.DefaultBranch {
+			continue
+		}
+
 		existingPR = pr
 		break
 	}
 
 	if existingPR != nil {
-		log.Debug().Int64("id", existingPR.GetID()).Int("number", existingPR.GetNumber()).Msg("found existing pull request, updating")
+		log.Debug().Int64("id", existingPR.GetID()).Int("number", existingPR.GetNumber()).Str("source-branch", sourceBranch).Str("target-branch", repository.DefaultBranch).Msg("found existing pull request, updating")
 		_, _, updateErr := client.PullRequests.Edit(context.Background(), repository.Namespace, repository.Name, existingPR.GetNumber(), &github.PullRequest{
 			Title: github.String(title),
 			Body:  github.String(description),
@@ -280,6 +290,20 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 	}
 
 	return nil
+}
+
+func (n Platform) FileContent(repository api.Repository, branch string, path string) (string, error) {
+	client := repository.InternalClient.(*github.Client)
+
+	// get file content
+	fileContent, _, _, err := client.Repositories.GetContents(context.Background(), repository.Namespace, repository.Name, path, &github.RepositoryContentGetOptions{
+		Ref: branch,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get file content: %w", err)
+	}
+
+	return fileContent.GetContent()
 }
 
 // NewPlatform creates a GitHub platform

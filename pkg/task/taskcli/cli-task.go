@@ -25,7 +25,7 @@ func (n CLITask) Name() string {
 // Execute runs the task
 func (n CLITask) Execute(ctx taskcommon.TaskContext) error {
 	// clone repository
-	vcsClient, err := vcs.GetVCSClientCloneRemote(ctx.Repository.CloneURL, ctx.Directory, ctx.Repository.DefaultBranch)
+	vcsClient, err := vcs.GetVCSClientCloneRemote(ctx.Repository.CloneURL, ctx.Directory, ctx.Repository.DefaultBranch, ctx.Platform.AuthMethod(ctx.Repository))
 	if err != nil {
 		return fmt.Errorf("failed to get instantiate vcs client: %w", err)
 	}

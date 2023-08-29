@@ -220,6 +220,18 @@ func (n Platform) AuthMethod(repo api.Repository) http.AuthMethod {
 	}
 }
 
+func (n Platform) FileContent(repository api.Repository, branch string, path string) (string, error) {
+	// query file
+	file, _, err := n.client.RepositoryFiles.GetFile(repository.Id, path, &gitlab.GetFileOptions{
+		Ref: gitlab.String(branch),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get file: %w", err)
+	}
+
+	return file.Content, nil
+}
+
 // NewPlatform creates a GitLab platform
 func NewPlatform(config Config) (Platform, error) {
 	client, err := gitlab.NewClient(config.AccessToken, gitlab.WithBaseURL(config.Server+"/api/v4"))

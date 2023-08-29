@@ -66,14 +66,14 @@ func (n *SimpleTask) CommitPushAndMergeRequest(commitMessage string, mergeReques
 			return fmt.Errorf("failed to commit and push: %w", err)
 		}
 		log.Info().Str("branch", n.BranchName).Msg("pushed changes to remote")
-	}
 
-	// create or update merge request
-	err = n.ctx.Platform.CreateOrUpdateMergeRequest(n.ctx.Repository, n.BranchName, mergeRequestTitle, mergeRequestDescription, mergeRequestKey)
-	if err != nil {
-		return err
+		// create or update merge request
+		err = n.ctx.Platform.CreateOrUpdateMergeRequest(n.ctx.Repository, n.BranchName, mergeRequestTitle, mergeRequestDescription, mergeRequestKey)
+		if err != nil {
+			return err
+		}
+		log.Info().Msg("created / updated merge request")
 	}
-	log.Info().Msg("created / updated merge request")
 
 	return nil
 }
