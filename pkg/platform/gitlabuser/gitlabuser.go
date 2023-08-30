@@ -1,13 +1,14 @@
 package gitlabuser
 
 import (
+	"encoding/base64"
 	"fmt"
 	"time"
 
 	"github.com/cidverse/vcs-app/pkg/platform/api"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/rs/zerolog/log"
 	"github.com/xanzy/go-gitlab"
 )
@@ -25,6 +26,14 @@ type Config struct {
 	Username    string
 	AccessToken string
 	Author      api.Author
+}
+
+func (n Platform) Name() string {
+	return "GitLab"
+}
+
+func (n Platform) Slug() string {
+	return "gitlab"
 }
 
 func (n Platform) Repositories() ([]api.Repository, error) {
@@ -62,7 +71,7 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 
 		result = append(result, api.Repository{
 			Id:            int64(repo.ID),
-			Namespace:     repo.Namespace.Path,
+			Namespace:     repo.Namespace.FullPath,
 			Name:          repo.Name,
 			Type:          "git",
 			CloneURL:      repo.HTTPURLToRepo,
@@ -154,11 +163,11 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 }
 
 func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch string, title string, description string) error {
-	_, _, err := n.client.MergeRequests.CreateMergeRequest(repository.Id, &gitlab.CreateMergeRequestOptions{
-		Title:              &title,
-		Description:        &description,
-		SourceBranch:       &sourceBranch,
-		TargetBranch:       &repository.DefaultBranch,
+	_, _, err := n.client.MergeRequests.CreateMergeRequest(int(repository.Id), &gitlab.CreateMergeRequestOptions{
+		Title:              gitlab.String(title),
+		Description:        gitlab.String(description),
+		SourceBranch:       gitlab.String(sourceBranch),
+		TargetBranch:       gitlab.String(repository.DefaultBranch),
 		RemoveSourceBranch: gitlab.Bool(true),
 		Squash:             gitlab.Bool(true),
 	})
@@ -170,11 +179,10 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 }
 
 func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBranch string, title string, description string, key string) error {
-	client := repository.InternalClient.(*gitlab.Client)
 	description = fmt.Sprintf("%s\n\n<!--vcs-merge-request-key:%s-->", description, key)
 
 	// Search for an existing merge request with the same source branch
-	mrs, _, err := client.MergeRequests.ListProjectMergeRequests(repository.Id, &gitlab.ListProjectMergeRequestsOptions{
+	mrs, _, err := n.client.MergeRequests.ListProjectMergeRequests(int(repository.Id), &gitlab.ListProjectMergeRequestsOptions{
 		SourceBranch: gitlab.String(sourceBranch),
 		TargetBranch: gitlab.String(repository.DefaultBranch),
 		State:        gitlab.String("opened"),
@@ -189,7 +197,7 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 	}
 
 	if existingMR != nil {
-		_, _, updateErr := client.MergeRequests.UpdateMergeRequest(repository.Id, existingMR.IID, &gitlab.UpdateMergeRequestOptions{
+		_, _, updateErr := n.client.MergeRequests.UpdateMergeRequest(int(repository.Id), existingMR.IID, &gitlab.UpdateMergeRequestOptions{
 			Title:       &title,
 			Description: &description,
 		})
@@ -197,11 +205,11 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 			return fmt.Errorf("failed to update merge request: %w", updateErr)
 		}
 	} else {
-		_, _, createErr := client.MergeRequests.CreateMergeRequest(repository.Id, &gitlab.CreateMergeRequestOptions{
-			Title:              &title,
-			Description:        &description,
-			SourceBranch:       &sourceBranch,
-			TargetBranch:       &repository.DefaultBranch,
+		_, _, createErr := n.client.MergeRequests.CreateMergeRequest(int(repository.Id), &gitlab.CreateMergeRequestOptions{
+			Title:              gitlab.String(title),
+			Description:        gitlab.String(description),
+			SourceBranch:       gitlab.String(sourceBranch),
+			TargetBranch:       gitlab.String(repository.DefaultBranch),
 			RemoveSourceBranch: gitlab.Bool(true),
 			Squash:             gitlab.Bool(true),
 		})
@@ -213,8 +221,8 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 	return nil
 }
 
-func (n Platform) AuthMethod(repo api.Repository) http.AuthMethod {
-	return &http.BasicAuth{
+func (n Platform) AuthMethod(repo api.Repository) githttp.AuthMethod {
+	return &githttp.BasicAuth{
 		Username: "oauth2",
 		Password: n.accessToken,
 	}
@@ -222,14 +230,25 @@ func (n Platform) AuthMethod(repo api.Repository) http.AuthMethod {
 
 func (n Platform) FileContent(repository api.Repository, branch string, path string) (string, error) {
 	// query file
-	file, _, err := n.client.RepositoryFiles.GetFile(repository.Id, path, &gitlab.GetFileOptions{
+	file, _, err := n.client.RepositoryFiles.GetFile(int(repository.Id), path, &gitlab.GetFileOptions{
 		Ref: gitlab.String(branch),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get file: %w", err)
 	}
 
-	return file.Content, nil
+	if file.Encoding == "base64" {
+		decoded, err := base64.StdEncoding.DecodeString(file.Content)
+		if err != nil {
+			return "", fmt.Errorf("failed to decode file %s with encoding %s: %w", path, file.Encoding, err)
+		}
+
+		return string(decoded), nil
+	} else if file.Encoding == "text" {
+		return file.Content, nil
+	}
+
+	return "", fmt.Errorf("unknown encoding %s for file %s", file.Encoding, path)
 }
 
 // NewPlatform creates a GitLab platform

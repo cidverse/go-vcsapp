@@ -16,8 +16,9 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var sharedTransport = http.DefaultTransport // shared transport to reuse TCP connections.
 const pageSize = 100
+
+var sharedTransport = http.DefaultTransport // shared transport to reuse TCP connections.
 
 type Platform struct {
 	appId      int64
@@ -28,6 +29,14 @@ type Platform struct {
 type Config struct {
 	AppId      int64  `yaml:"appId"`
 	PrivateKey string `yaml:"privateKey"`
+}
+
+func (n Platform) Name() string {
+	return "GitHub"
+}
+
+func (n Platform) Slug() string {
+	return "github"
 }
 
 func (n Platform) Repositories() ([]api.Repository, error) {

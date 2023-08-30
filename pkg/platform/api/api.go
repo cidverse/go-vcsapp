@@ -8,6 +8,10 @@ import (
 
 // Platform provides a common interface to work with all platforms
 type Platform interface {
+	// Name returns the name of the platform
+	Name() string
+	// Slug returns the slug of the platform
+	Slug() string
 	// Repositories returns a list of all repositories we have access to
 	Repositories() ([]Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
