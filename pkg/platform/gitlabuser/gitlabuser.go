@@ -3,6 +3,7 @@ package gitlabuser
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cidverse/vcs-app/pkg/platform/api"
@@ -69,15 +70,23 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 			return result, fmt.Errorf("failed to list branches: %w", err)
 		}
 
-		result = append(result, api.Repository{
+		r := api.Repository{
 			Id:            int64(repo.ID),
 			Namespace:     repo.Namespace.FullPath,
 			Name:          repo.Name,
+			Description:   repo.Description,
 			Type:          "git",
+			URL:           strings.TrimPrefix(repo.WebURL, "https://"),
 			CloneURL:      repo.HTTPURLToRepo,
 			DefaultBranch: repo.DefaultBranch,
 			Branches:      branchSliceToNameSlice(branchList),
-		})
+			LicenseURL:    repo.LicenseURL,
+			CreatedAt:     repo.CreatedAt,
+		}
+		if repo.License != nil {
+			r.LicenseName = repo.License.Name
+		}
+		result = append(result, r)
 	}
 
 	return result, nil

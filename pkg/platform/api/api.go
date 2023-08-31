@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
@@ -29,13 +30,18 @@ type Platform interface {
 }
 
 type Repository struct {
-	Id             int64    // the id of the repository
-	Namespace      string   // the namespace of the repository (e.g. organization or user)
-	Name           string   // the name of the repository
-	Type           string   // repository type - valid values: git
-	CloneURL       string   // the clone url of the repository
-	DefaultBranch  string   // the default branch of the repository
-	Branches       []string // list of all branches
+	Id             int64      // the id of the repository
+	Namespace      string     // the namespace of the repository (e.g. organization or user)
+	Name           string     // the name of the repository
+	Description    string     // the description of the repository
+	Type           string     // repository type - valid values: git
+	URL            string     // the url of the repository
+	CloneURL       string     // the clone url of the repository
+	DefaultBranch  string     // the default branch of the repository
+	Branches       []string   // list of all branches
+	LicenseName    string     // the name of the license
+	LicenseURL     string     // the url of the license
+	CreatedAt      *time.Time // the creation date of the repository
 	RoundTripper   http.RoundTripper
 	InternalClient interface{} // this is a platform specific client for the repository (GitHub apps require an org-scoped client)
 }

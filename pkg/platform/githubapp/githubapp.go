@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/cidverse/vcs-app/pkg/platform/api"
@@ -88,17 +89,25 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 				return result, fmt.Errorf("failed to list branches: %w", err)
 			}
 
-			result = append(result, api.Repository{
+			r := api.Repository{
 				Id:             repo.GetID(),
 				Namespace:      repo.GetOwner().GetLogin(),
 				Name:           repo.GetName(),
+				Description:    repo.GetDescription(),
 				Type:           "git",
+				URL:            strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
 				CloneURL:       repo.GetCloneURL(),
 				DefaultBranch:  repo.GetDefaultBranch(),
 				Branches:       branchSliceToNameSlice(branchList),
+				CreatedAt:      repo.CreatedAt.GetTime(),
 				RoundTripper:   itr,
 				InternalClient: orgClient,
-			})
+			}
+			if repo.GetLicense() != nil {
+				r.LicenseName = repo.GetLicense().GetName()
+				r.LicenseURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/LICENSE", repo.GetOwner().GetLogin(), repo.GetName(), repo.GetDefaultBranch())
+			}
+			result = append(result, r)
 		}
 	}
 
