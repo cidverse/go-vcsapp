@@ -1,7 +1,7 @@
 package taskcommon
 
 import (
-	"github.com/cidverse/vcs-app/pkg/platform/api"
+	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 )
 
 type TaskContext struct {

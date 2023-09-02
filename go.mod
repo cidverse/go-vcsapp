@@ -1,4 +1,4 @@
-module github.com/cidverse/vcs-app
+module github.com/cidverse/go-vcsapp
 
 go 1.21
 

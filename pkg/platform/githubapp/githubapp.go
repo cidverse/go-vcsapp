@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/cidverse/vcs-app/pkg/platform/api"
+	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/google/go-github/v54/github"

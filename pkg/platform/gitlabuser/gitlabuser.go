@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cidverse/vcs-app/pkg/platform/api"
+	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"

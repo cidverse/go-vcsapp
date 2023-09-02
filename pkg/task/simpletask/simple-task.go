@@ -5,7 +5,7 @@ import (
 
 	"github.com/cidverse/go-vcs"
 	"github.com/cidverse/go-vcs/vcsapi"
-	"github.com/cidverse/vcs-app/pkg/task/taskcommon"
+	"github.com/cidverse/go-vcsapp/pkg/task/taskcommon"
 	"github.com/rs/zerolog/log"
 )
 

@@ -5,9 +5,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/cidverse/vcs-app/pkg/platform/api"
-	"github.com/cidverse/vcs-app/pkg/platform/githubapp"
-	"github.com/cidverse/vcs-app/pkg/platform/gitlabuser"
+	"github.com/cidverse/go-vcsapp/pkg/platform/api"
+	"github.com/cidverse/go-vcsapp/pkg/platform/githubapp"
+	"github.com/cidverse/go-vcsapp/pkg/platform/gitlabuser"
 )
 
 const (

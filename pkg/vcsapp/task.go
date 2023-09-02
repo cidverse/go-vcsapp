@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cidverse/vcs-app/pkg/platform/api"
-	"github.com/cidverse/vcs-app/pkg/task/taskcommon"
+	"github.com/cidverse/go-vcsapp/pkg/platform/api"
+	"github.com/cidverse/go-vcsapp/pkg/task/taskcommon"
 	"github.com/rs/zerolog/log"
 )
 
