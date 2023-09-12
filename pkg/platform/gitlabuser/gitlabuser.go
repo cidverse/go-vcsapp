@@ -64,6 +64,12 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 	log.Debug().Int("count", len(repositories)).Msg("gitlab platform - found repositories")
 
 	for _, repo := range repositories {
+		// head commit hash
+		commit, _, err := n.client.Commits.GetCommit(repo.ID, repo.DefaultBranch)
+		if err != nil {
+			return result, fmt.Errorf("failed to get commit: %w", err)
+		}
+
 		// query branches
 		branchList, _, err := n.client.Branches.ListBranches(repo.ID, &gitlab.ListBranchesOptions{})
 		if err != nil {
@@ -81,6 +87,8 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 			DefaultBranch: repo.DefaultBranch,
 			Branches:      branchSliceToNameSlice(branchList),
 			LicenseURL:    repo.LicenseURL,
+			CommitHash:    commit.ID,
+			CommitDate:    commit.CommittedDate,
 			CreatedAt:     repo.CreatedAt,
 		}
 		if repo.License != nil {
@@ -258,6 +266,65 @@ func (n Platform) FileContent(repository api.Repository, branch string, path str
 	}
 
 	return "", fmt.Errorf("unknown encoding %s for file %s", file.Encoding, path)
+}
+
+func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) {
+	var result []api.Tag
+
+	tagList, _, err := n.client.Tags.ListTags(int(repository.Id), &gitlab.ListTagsOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: limit,
+		},
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to list tags: %w", err)
+	}
+
+	for _, r := range tagList {
+		result = append(result, api.Tag{
+			Name:       r.Name,
+			CommitHash: r.Commit.ID,
+		})
+	}
+
+	return result, nil
+}
+
+func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release, error) {
+	var result []api.Release
+
+	releaseList, _, err := n.client.Releases.ListReleases(int(repository.Id), &gitlab.ListReleasesOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: limit,
+		},
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to list releases: %w", err)
+	}
+	for _, r := range releaseList {
+		result = append(result, api.Release{
+			Name:        r.Name,
+			TagName:     r.TagName,
+			Description: r.Description,
+			CommitHash:  r.Commit.ID,
+			CreatedAt:   r.CreatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+func (n Platform) CreateTag(repository api.Repository, tag string, commitHash string, message string) error {
+	_, _, err := n.client.Tags.CreateTag(int(repository.Id), &gitlab.CreateTagOptions{
+		TagName: gitlab.String(tag),
+		Ref:     gitlab.String(commitHash),
+		Message: gitlab.String(message),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create tag: %w", err)
+	}
+
+	return nil
 }
 
 // NewPlatform creates a GitLab platform

@@ -83,6 +83,12 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 		log.Debug().Str("org", installation.Account.GetLogin()).Int("count", len(repositories)).Msg("github platform - found repositories in organization")
 
 		for _, repo := range repositories {
+			// head commit hash
+			commit, _, err := orgClient.Repositories.GetCommit(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), "heads/"+repo.GetDefaultBranch(), &github.ListOptions{})
+			if err != nil {
+				return result, fmt.Errorf("failed to get commit: %w", err)
+			}
+
 			// query branches
 			branchList, _, err := orgClient.Repositories.ListBranches(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), &github.BranchListOptions{})
 			if err != nil {
@@ -99,6 +105,8 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 				CloneURL:       repo.GetCloneURL(),
 				DefaultBranch:  repo.GetDefaultBranch(),
 				Branches:       branchSliceToNameSlice(branchList),
+				CommitHash:     commit.GetSHA(),
+				CommitDate:     commit.GetCommitter().CreatedAt.GetTime(),
 				CreatedAt:      repo.CreatedAt.GetTime(),
 				RoundTripper:   itr,
 				InternalClient: orgClient,
@@ -322,6 +330,84 @@ func (n Platform) FileContent(repository api.Repository, branch string, path str
 	}
 
 	return fileContent.GetContent()
+}
+
+func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) {
+	client := repository.InternalClient.(*github.Client)
+	var result []api.Tag
+
+	refs, _, err := client.Git.ListMatchingRefs(context.Background(), repository.Namespace, repository.Name, &github.ReferenceListOptions{
+		Ref: "tags/",
+		ListOptions: github.ListOptions{
+			PerPage: limit,
+		},
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to list tags: %w", err)
+	}
+
+	for _, r := range refs {
+		result = append(result, api.Tag{
+			Name:       strings.TrimPrefix(r.GetRef(), "refs/tags/"),
+			CommitHash: r.Object.GetSHA(),
+		})
+	}
+
+	return result, nil
+}
+
+func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release, error) {
+	client := repository.InternalClient.(*github.Client)
+	var result []api.Release
+
+	releaseList, _, err := client.Repositories.ListReleases(context.Background(), repository.Namespace, repository.Name, &github.ListOptions{
+		PerPage: limit,
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to list releases: %w", err)
+	}
+	for _, r := range releaseList {
+		ref, _, err := client.Git.GetRef(context.Background(), repository.Namespace, repository.Name, "tags/"+r.GetTagName())
+		if err != nil {
+			return result, fmt.Errorf("failed to get tag: %w", err)
+		}
+
+		result = append(result, api.Release{
+			Name:        r.GetName(),
+			TagName:     r.GetTagName(),
+			Description: r.GetBody(),
+			CommitHash:  ref.GetObject().GetSHA(),
+			CreatedAt:   r.CreatedAt.GetTime(),
+		})
+	}
+
+	return result, nil
+}
+
+func (n Platform) CreateTag(repository api.Repository, tagName string, commitHash string, message string) error {
+	client := repository.InternalClient.(*github.Client)
+
+	// create tag
+	tag, _, err := client.Git.CreateTag(context.Background(), repository.Namespace, repository.Name, &github.Tag{
+		Tag:     github.String(tagName),
+		SHA:     github.String(commitHash),
+		Message: github.String(message),
+		Object:  &github.GitObject{Type: github.String("commit"), SHA: github.String(commitHash)},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create tag: %w", err)
+	}
+
+	// create ref
+	_, _, err = client.Git.CreateRef(context.Background(), repository.Namespace, repository.Name, &github.Reference{
+		Ref:    github.String("refs/tags/" + tagName),
+		Object: tag.GetObject(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create tag reference: %w", err)
+	}
+
+	return nil
 }
 
 // NewPlatform creates a GitHub platform

@@ -27,6 +27,12 @@ type Platform interface {
 	CreateOrUpdateMergeRequest(repository Repository, sourceBranch string, title string, description string, key string) error
 	// FileContent returns the content of a file
 	FileContent(repository Repository, branch string, path string) (string, error)
+	// Tags returns a list of all tags
+	Tags(repository Repository, limit int) ([]Tag, error)
+	// Releases returns a list of all releases
+	Releases(repository Repository, limit int) ([]Release, error)
+	// CreateTag creates a tag
+	CreateTag(repository Repository, tag string, commitHash string, message string) error
 }
 
 type Repository struct {
@@ -41,6 +47,8 @@ type Repository struct {
 	Branches       []string   // list of all branches
 	LicenseName    string     // the name of the license
 	LicenseURL     string     // the url of the license
+	CommitHash     string     // the commit hash of the latest commit on the default branch
+	CommitDate     *time.Time // the commit date of the latest commit on the default branch
 	CreatedAt      *time.Time // the creation date of the repository
 	RoundTripper   http.RoundTripper
 	InternalClient interface{} // this is a platform specific client for the repository (GitHub apps require an org-scoped client)
@@ -70,4 +78,24 @@ type MergeRequestSearchOptions struct {
 	SourceBranch string
 	TargetBranch string
 	State        string
+}
+
+type Tag struct {
+	// Name is the name of the release
+	Name string
+	// CommitHash is the commit hash of the release
+	CommitHash string
+}
+
+type Release struct {
+	// Name is the name of the release
+	Name string
+	// TagName is the tag name of the release
+	TagName string
+	// Description is the description of the release
+	Description string
+	// CommitHash is the commit hash of the release
+	CommitHash string
+	// CreatedAt is the creation date of the release
+	CreatedAt *time.Time
 }
