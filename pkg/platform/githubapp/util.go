@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v54/github"
+	"github.com/google/go-github/v56/github"
 )
 
-// SliceToNameSlice converts a slice of branches to a slice of branch names
+// branchSliceToNameSlice converts a slice of branches to a slice of branch names
 func branchSliceToNameSlice(branches []*github.Branch) []string {
 	var branchNames []string
 	for _, branch := range branches {
