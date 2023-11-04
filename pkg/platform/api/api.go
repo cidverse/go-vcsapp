@@ -14,7 +14,7 @@ type Platform interface {
 	// Slug returns the slug of the platform
 	Slug() string
 	// Repositories returns a list of all repositories we have access to
-	Repositories() ([]Repository, error)
+	Repositories(opts RepositoryListOpts) ([]Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
 	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
 	// AuthMethod returns the authentication method used by the platform, required to push changes
@@ -98,4 +98,9 @@ type Release struct {
 	CommitHash string
 	// CreatedAt is the creation date of the release
 	CreatedAt *time.Time
+}
+
+type RepositoryListOpts struct {
+	IncludeBranches   bool
+	IncludeCommitHash bool
 }

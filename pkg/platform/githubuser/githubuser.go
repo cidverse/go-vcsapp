@@ -35,29 +35,17 @@ func (n Platform) Slug() string {
 	return "github"
 }
 
-func (n Platform) Repositories() ([]api.Repository, error) {
+func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, error) {
 	var result []api.Repository
 
 	// query installations
-	repositories, _, err := n.client.Repositories.List(context.Background(), "", &github.RepositoryListOptions{Type: "owner", Sort: "updated", Direction: "desc"})
+	repositories, _, err := n.client.Repositories.List(context.Background(), "", &github.RepositoryListOptions{Affiliation: "owner,collaborator,organization_member"})
 	if err != nil {
 		return result, fmt.Errorf("failed to list repositories: %w", err)
 	}
 	log.Debug().Int("count", len(repositories)).Msg("github platform - found repositories")
 
 	for _, repo := range repositories {
-		// head commit hash
-		commit, _, err := n.client.Repositories.GetCommit(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), "heads/"+repo.GetDefaultBranch(), &github.ListOptions{})
-		if err != nil {
-			return result, fmt.Errorf("failed to get commit: %w", err)
-		}
-
-		// query branches
-		branchList, _, err := n.client.Repositories.ListBranches(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), &github.BranchListOptions{})
-		if err != nil {
-			return result, fmt.Errorf("failed to list branches: %w", err)
-		}
-
 		r := api.Repository{
 			Id:            repo.GetID(),
 			Namespace:     repo.GetOwner().GetLogin(),
@@ -67,15 +55,34 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 			URL:           strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
 			CloneURL:      repo.GetCloneURL(),
 			DefaultBranch: repo.GetDefaultBranch(),
-			Branches:      branchSliceToNameSlice(branchList),
-			CommitHash:    commit.GetSHA(),
-			CommitDate:    commit.GetCommitter().CreatedAt.GetTime(),
 			CreatedAt:     repo.CreatedAt.GetTime(),
 		}
 		if repo.GetLicense() != nil {
 			r.LicenseName = repo.GetLicense().GetName()
 			r.LicenseURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/LICENSE", repo.GetOwner().GetLogin(), repo.GetName(), repo.GetDefaultBranch())
 		}
+
+		// commit
+		if opts.IncludeCommitHash {
+			commit, _, err := n.client.Repositories.GetCommit(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), "heads/"+repo.GetDefaultBranch(), &github.ListOptions{})
+			if err != nil {
+				return result, fmt.Errorf("failed to get commit: %w", err)
+			}
+
+			r.CommitHash = commit.GetSHA()
+			r.CommitDate = commit.GetCommitter().CreatedAt.GetTime()
+		}
+
+		// branches
+		if opts.IncludeBranches {
+			branchList, _, err := n.client.Repositories.ListBranches(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), &github.BranchListOptions{})
+			if err != nil {
+				return result, fmt.Errorf("failed to list branches: %w", err)
+			}
+
+			r.Branches = branchSliceToNameSlice(branchList)
+		}
+
 		result = append(result, r)
 	}
 

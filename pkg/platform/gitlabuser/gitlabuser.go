@@ -37,7 +37,7 @@ func (n Platform) Slug() string {
 	return "gitlab"
 }
 
-func (n Platform) Repositories() ([]api.Repository, error) {
+func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, error) {
 	var result []api.Repository
 
 	// query repositories
@@ -64,18 +64,6 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 	log.Debug().Int("count", len(repositories)).Msg("gitlab platform - found repositories")
 
 	for _, repo := range repositories {
-		// head commit hash
-		commit, _, err := n.client.Commits.GetCommit(repo.ID, repo.DefaultBranch)
-		if err != nil {
-			return result, fmt.Errorf("failed to get commit: %w", err)
-		}
-
-		// query branches
-		branchList, _, err := n.client.Branches.ListBranches(repo.ID, &gitlab.ListBranchesOptions{})
-		if err != nil {
-			return result, fmt.Errorf("failed to list branches: %w", err)
-		}
-
 		r := api.Repository{
 			Id:            int64(repo.ID),
 			Namespace:     repo.Namespace.FullPath,
@@ -85,15 +73,34 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 			URL:           strings.TrimPrefix(repo.WebURL, "https://"),
 			CloneURL:      repo.HTTPURLToRepo,
 			DefaultBranch: repo.DefaultBranch,
-			Branches:      branchSliceToNameSlice(branchList),
 			LicenseURL:    repo.LicenseURL,
-			CommitHash:    commit.ID,
-			CommitDate:    commit.CommittedDate,
 			CreatedAt:     repo.CreatedAt,
 		}
 		if repo.License != nil {
 			r.LicenseName = repo.License.Name
 		}
+
+		// commit
+		if opts.IncludeCommitHash {
+			commit, _, err := n.client.Commits.GetCommit(repo.ID, repo.DefaultBranch)
+			if err != nil {
+				return result, fmt.Errorf("failed to get commit: %w", err)
+			}
+
+			r.CommitHash = commit.ID
+			r.CommitDate = commit.CommittedDate
+		}
+
+		// branches
+		if opts.IncludeBranches {
+			branchList, _, err := n.client.Branches.ListBranches(repo.ID, &gitlab.ListBranchesOptions{})
+			if err != nil {
+				return result, fmt.Errorf("failed to list branches: %w", err)
+			}
+
+			r.Branches = branchSliceToNameSlice(branchList)
+		}
+
 		result = append(result, r)
 	}
 
