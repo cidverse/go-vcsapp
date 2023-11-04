@@ -17,8 +17,3 @@ func getEnvAsMap() map[string]string {
 
 	return envMap
 }
-
-func mapHasKey(m map[string]string, key string) bool {
-	_, exists := m[key]
-	return exists
-}

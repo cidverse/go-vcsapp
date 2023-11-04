@@ -11,7 +11,10 @@ import (
 
 func ExecuteTasks(platform api.Platform, tasks []taskcommon.Task) error {
 	// list repositories
-	repos, err := platform.Repositories()
+	repos, err := platform.Repositories(api.RepositoryListOpts{
+		IncludeBranches:   true,
+		IncludeCommitHash: true,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to list repositories: %w", err)
 	}

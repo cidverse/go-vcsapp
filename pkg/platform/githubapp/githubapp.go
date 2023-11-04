@@ -133,6 +133,10 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	return result, nil
 }
 
+func (n Platform) FindRepository(path string) (api.Repository, error) {
+	return api.Repository{}, fmt.Errorf("not implemented")
+}
+
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
 	var result []api.MergeRequest
 

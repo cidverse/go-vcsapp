@@ -15,6 +15,8 @@ type Platform interface {
 	Slug() string
 	// Repositories returns a list of all repositories we have access to
 	Repositories(opts RepositoryListOpts) ([]Repository, error)
+	// FindRepository returns one repository by its name
+	FindRepository(name string) (Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
 	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
 	// Languages returns a map of used languages and their line count

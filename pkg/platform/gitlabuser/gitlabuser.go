@@ -3,7 +3,6 @@ package gitlabuser
 import (
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
@@ -64,25 +63,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	log.Debug().Int("count", len(repositories)).Msg("gitlab platform - found repositories")
 
 	for _, repo := range repositories {
-		r := api.Repository{
-			PlatformId:    api.GetServerIdFromCloneURL(repo.HTTPURLToRepo),
-			PlatformType:  "gitlab",
-			Id:            int64(repo.ID),
-			Namespace:     repo.Namespace.FullPath,
-			Name:          repo.Name,
-			Description:   repo.Description,
-			Type:          "git",
-			URL:           strings.TrimPrefix(repo.WebURL, "https://"),
-			CloneURL:      repo.HTTPURLToRepo,
-			DefaultBranch: repo.DefaultBranch,
-			Topics:        repo.Topics,
-			LicenseURL:    repo.LicenseURL,
-			CreatedAt:     repo.CreatedAt,
-			InternalRepo:  repo,
-		}
-		if repo.License != nil {
-			r.LicenseName = repo.License.Name
-		}
+		r := convertRepository(repo)
 
 		// commit
 		if opts.IncludeCommitHash {
@@ -109,6 +90,15 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	}
 
 	return result, nil
+}
+
+func (n Platform) FindRepository(path string) (api.Repository, error) {
+	repo, _, err := n.client.Projects.GetProject(path, &gitlab.GetProjectOptions{License: gitlab.Bool(true)})
+	if err != nil {
+		return api.Repository{}, fmt.Errorf("failed to get repository: %w", err)
+	}
+
+	return convertRepository(repo), nil
 }
 
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {

@@ -23,46 +23,42 @@ const (
 	GitlabAccessToken       = "GITLAB_ACCESS_TOKEN"
 )
 
-// GetPlatformFromEnvironment returns a platform configured via environment variables.
-func GetPlatformFromEnvironment() (api.Platform, error) {
-	env := getEnvAsMap()
+type PlatformConfig struct {
+	GitHubAppId             string
+	GitHubAppPrivateKey     string
+	GitHubAppPrivateKeyFile string
+	GitHubUsername          string
+	GitHubToken             string
+	GitLabServer            string
+	GitLabAccessToken       string
+	Author                  api.Author
+}
 
-	// author
-	author := api.Author{
-		Name:  "vcs-app",
-		Email: "vcs-app@localhost",
-	}
-	if mapHasKey(env, AuthorName) {
-		author.Name = env[AuthorName]
-	}
-	if mapHasKey(env, AuthorEMail) {
-		author.Email = env[AuthorEMail]
-	}
-
+func NewPlatform(platformConfig PlatformConfig) (api.Platform, error) {
 	// GitLab - as user
-	if mapHasKey(env, GitlabServer) && mapHasKey(env, GitlabAccessToken) {
+	if platformConfig.GitLabServer != "" && platformConfig.GitLabAccessToken != "" {
 		platform, err := gitlabuser.NewPlatform(gitlabuser.Config{
-			Server:      env[GitlabServer],
-			Author:      author,
-			AccessToken: env[GitlabAccessToken],
+			Server:      platformConfig.GitLabServer,
+			AccessToken: platformConfig.GitLabAccessToken,
+			Author:      platformConfig.Author,
 		})
 		return platform, err
 	}
 
 	// GitHub - as application
-	if mapHasKey(env, GithubAppId) && mapHasKey(env, GithubAppPrivateKey) {
-		appId, _ := strconv.ParseInt(os.Getenv(GithubAppId), 10, 64)
+	if platformConfig.GitHubAppId != "" && platformConfig.GitHubAppPrivateKey != "" {
+		appId, _ := strconv.ParseInt(platformConfig.GitHubAppId, 10, 64)
 		platform, err := githubapp.NewPlatform(githubapp.Config{
 			AppId:      appId,
-			PrivateKey: env[GithubAppPrivateKey],
+			PrivateKey: platformConfig.GitHubAppPrivateKey,
 		})
 		return platform, err
 	}
-	if mapHasKey(env, GithubAppId) && mapHasKey(env, GithubAppPrivateKeyFile) {
-		appId, _ := strconv.ParseInt(os.Getenv(GithubAppId), 10, 64)
+	if platformConfig.GitHubAppId != "" && platformConfig.GitHubAppPrivateKeyFile != "" {
+		appId, _ := strconv.ParseInt(platformConfig.GitHubAppId, 10, 64)
 
 		// read private key
-		privateKey, err := os.ReadFile(env[GithubAppPrivateKeyFile])
+		privateKey, err := os.ReadFile(platformConfig.GitHubAppPrivateKeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read private key file: %w", err)
 		}
@@ -75,13 +71,47 @@ func GetPlatformFromEnvironment() (api.Platform, error) {
 	}
 
 	// GitHub - as user
-	if mapHasKey(env, GithubUsername) && mapHasKey(env, GithubToken) {
+	if platformConfig.GitHubUsername != "" && platformConfig.GitHubToken != "" {
 		platform, err := githubuser.NewPlatform(githubuser.Config{
-			Username:    env[GithubUsername],
-			AccessToken: env[GithubToken],
+			Username:    platformConfig.GitHubUsername,
+			AccessToken: platformConfig.GitHubToken,
 		})
 		return platform, err
 	}
 
-	return nil, fmt.Errorf("no platform found, please configure the platform environment variables according to the documentation")
+	return nil, fmt.Errorf("no valid platform found")
+}
+
+// GetPlatformFromEnvironment returns a platform configured via environment variables.
+func GetPlatformFromEnvironment() (api.Platform, error) {
+	env := getEnvAsMap()
+
+	// author
+	author := api.Author{
+		Name:  "vcs-app",
+		Email: "vcs-app@localhost",
+	}
+	if env[AuthorName] != "" {
+		author.Name = env[AuthorName]
+	}
+	if env[AuthorEMail] != "" {
+		author.Email = env[AuthorEMail]
+	}
+
+	// initialize platform
+	p, err := NewPlatform(PlatformConfig{
+		GitHubAppId:             env[GithubAppId],
+		GitHubAppPrivateKey:     env[GithubAppPrivateKey],
+		GitHubAppPrivateKeyFile: env[GithubAppPrivateKeyFile],
+		GitHubUsername:          env[GithubUsername],
+		GitHubToken:             env[GithubToken],
+		GitLabServer:            env[GitlabServer],
+		GitLabAccessToken:       env[GitlabAccessToken],
+		Author:                  author,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize platform: %w. check the documentation and provide environment variables for at least one platform", err)
+	}
+
+	return p, nil
 }

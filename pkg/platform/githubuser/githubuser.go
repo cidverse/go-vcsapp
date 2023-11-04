@@ -38,33 +38,26 @@ func (n Platform) Slug() string {
 func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, error) {
 	var result []api.Repository
 
-	// query installations
-	repositories, _, err := n.client.Repositories.List(context.Background(), "", &github.RepositoryListOptions{Affiliation: "owner,collaborator,organization_member"})
-	if err != nil {
-		return result, fmt.Errorf("failed to list repositories: %w", err)
+	// query repo
+	var repositories []*github.Repository
+	listOpts := github.ListOptions{PerPage: pageSize}
+	for {
+		data, resp, err := n.client.Repositories.List(context.Background(), "", &github.RepositoryListOptions{Affiliation: "owner,collaborator,organization_member", ListOptions: listOpts})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list repositories: %w", err)
+		}
+		repositories = append(repositories, data...)
+
+		if resp.NextPage == 0 {
+			break
+		}
+		listOpts.Page = resp.NextPage
 	}
 	log.Debug().Int("count", len(repositories)).Msg("github platform - found repositories")
 
+	// convert repositories
 	for _, repo := range repositories {
-		r := api.Repository{
-			PlatformId:    api.GetServerIdFromCloneURL(repo.GetCloneURL()),
-			PlatformType:  "github",
-			Id:            repo.GetID(),
-			Namespace:     repo.GetOwner().GetLogin(),
-			Name:          repo.GetName(),
-			Description:   repo.GetDescription(),
-			Type:          "git",
-			URL:           strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
-			CloneURL:      repo.GetCloneURL(),
-			DefaultBranch: repo.GetDefaultBranch(),
-			Topics:        repo.Topics,
-			CreatedAt:     repo.CreatedAt.GetTime(),
-			InternalRepo:  repo,
-		}
-		if repo.GetLicense() != nil {
-			r.LicenseName = repo.GetLicense().GetName()
-			r.LicenseURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/LICENSE", repo.GetOwner().GetLogin(), repo.GetName(), repo.GetDefaultBranch())
-		}
+		r := convertRepository(repo)
 
 		// commit
 		if opts.IncludeCommitHash {
@@ -93,6 +86,20 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	return result, nil
 }
 
+func (n Platform) FindRepository(path string) (api.Repository, error) {
+	// split owner and name
+	owner := strings.Split(path, "/")[0]
+	name := strings.Split(path, "/")[1]
+
+	// find repository
+	repo, _, err := n.client.Repositories.Get(context.Background(), owner, name)
+	if err != nil {
+		return api.Repository{}, fmt.Errorf("failed to get repository: %w", err)
+	}
+
+	return convertRepository(repo), nil
+}
+
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
 	var result []api.MergeRequest
 
@@ -109,6 +116,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			return result, fmt.Errorf("failed to list merge requests: %w", err)
 		}
 		pullRequests = append(pullRequests, data...)
+
 		if resp.NextPage == 0 {
 			break
 		}
