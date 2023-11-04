@@ -1,15 +1,12 @@
-package githubapp
+package githubuser
 
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
-	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -19,17 +16,15 @@ import (
 
 const pageSize = 100
 
-var sharedTransport = http.DefaultTransport // shared transport to reuse TCP connections.
-
 type Platform struct {
-	appId      int64
-	privateKey string
-	client     *github.Client
+	username    string
+	accessToken string
+	client      *github.Client
 }
 
 type Config struct {
-	AppId      int64  `yaml:"appId"`
-	PrivateKey string `yaml:"privateKey"`
+	Username    string `yaml:"username"`
+	AccessToken string `yaml:"token"`
 }
 
 func (n Platform) Name() string {
@@ -44,79 +39,44 @@ func (n Platform) Repositories() ([]api.Repository, error) {
 	var result []api.Repository
 
 	// query installations
-	var installations []*github.Installation
-	installationOpts := &github.ListOptions{PerPage: pageSize}
-	for {
-		data, resp, err := n.client.Apps.ListInstallations(context.Background(), installationOpts)
-		if err != nil {
-			log.Fatal().Err(err).Interface("opts", installationOpts).Msg("failed to list installations")
-		}
-		installations = append(installations, data...)
-		if resp.NextPage == 0 {
-			break
-		}
-		installationOpts.Page = resp.NextPage
+	repositories, _, err := n.client.Repositories.List(context.Background(), "", &github.RepositoryListOptions{Type: "owner", Sort: "updated", Direction: "desc"})
+	if err != nil {
+		return result, fmt.Errorf("failed to list repositories: %w", err)
 	}
-	log.Info().Int("count", len(installations)).Msg("github platform - found app installations")
+	log.Debug().Int("count", len(repositories)).Msg("github platform - found repositories")
 
-	for _, installation := range installations {
-		itr, err := ghinstallation.New(sharedTransport, n.appId, *installation.ID, []byte(n.privateKey))
+	for _, repo := range repositories {
+		// head commit hash
+		commit, _, err := n.client.Repositories.GetCommit(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), "heads/"+repo.GetDefaultBranch(), &github.ListOptions{})
 		if err != nil {
-			return result, fmt.Errorf("failed to create installation transport: %w", err)
+			return result, fmt.Errorf("failed to get commit: %w", err)
 		}
-		orgClient := github.NewClient(&http.Client{Transport: itr})
 
-		// query repositories
-		var repositories []*github.Repository
-		repositoryOpts := &github.ListOptions{PerPage: pageSize}
-		for {
-			data, resp, err := orgClient.Apps.ListRepos(context.Background(), repositoryOpts)
-			if err != nil {
-				return result, fmt.Errorf("failed to list repos: %w", err)
-			}
-			repositories = append(repositories, data.Repositories...)
-			if resp.NextPage == 0 {
-				break
-			}
-			repositoryOpts.Page = resp.NextPage
+		// query branches
+		branchList, _, err := n.client.Repositories.ListBranches(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), &github.BranchListOptions{})
+		if err != nil {
+			return result, fmt.Errorf("failed to list branches: %w", err)
 		}
-		log.Debug().Str("org", installation.Account.GetLogin()).Int("count", len(repositories)).Msg("github platform - found repositories in organization")
 
-		for _, repo := range repositories {
-			// head commit hash
-			commit, _, err := orgClient.Repositories.GetCommit(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), "heads/"+repo.GetDefaultBranch(), &github.ListOptions{})
-			if err != nil {
-				return result, fmt.Errorf("failed to get commit: %w", err)
-			}
-
-			// query branches
-			branchList, _, err := orgClient.Repositories.ListBranches(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), &github.BranchListOptions{})
-			if err != nil {
-				return result, fmt.Errorf("failed to list branches: %w", err)
-			}
-
-			r := api.Repository{
-				Id:             repo.GetID(),
-				Namespace:      repo.GetOwner().GetLogin(),
-				Name:           repo.GetName(),
-				Description:    repo.GetDescription(),
-				Type:           "git",
-				URL:            strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
-				CloneURL:       repo.GetCloneURL(),
-				DefaultBranch:  repo.GetDefaultBranch(),
-				Branches:       branchSliceToNameSlice(branchList),
-				CommitHash:     commit.GetSHA(),
-				CommitDate:     commit.GetCommitter().CreatedAt.GetTime(),
-				CreatedAt:      repo.CreatedAt.GetTime(),
-				RoundTripper:   itr,
-				InternalClient: orgClient,
-			}
-			if repo.GetLicense() != nil {
-				r.LicenseName = repo.GetLicense().GetName()
-				r.LicenseURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/LICENSE", repo.GetOwner().GetLogin(), repo.GetName(), repo.GetDefaultBranch())
-			}
-			result = append(result, r)
+		r := api.Repository{
+			Id:            repo.GetID(),
+			Namespace:     repo.GetOwner().GetLogin(),
+			Name:          repo.GetName(),
+			Description:   repo.GetDescription(),
+			Type:          "git",
+			URL:           strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
+			CloneURL:      repo.GetCloneURL(),
+			DefaultBranch: repo.GetDefaultBranch(),
+			Branches:      branchSliceToNameSlice(branchList),
+			CommitHash:    commit.GetSHA(),
+			CommitDate:    commit.GetCommitter().CreatedAt.GetTime(),
+			CreatedAt:     repo.CreatedAt.GetTime(),
 		}
+		if repo.GetLicense() != nil {
+			r.LicenseName = repo.GetLicense().GetName()
+			r.LicenseURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/LICENSE", repo.GetOwner().GetLogin(), repo.GetName(), repo.GetDefaultBranch())
+		}
+		result = append(result, r)
 	}
 
 	return result, nil
@@ -128,7 +88,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	var pullRequests []*github.PullRequest
 	opts := github.ListOptions{PerPage: pageSize}
 	for {
-		data, resp, err := repo.InternalClient.(*github.Client).PullRequests.List(context.Background(), repo.Namespace, repo.Name, &github.PullRequestListOptions{
+		data, resp, err := n.client.PullRequests.List(context.Background(), repo.Namespace, repo.Name, &github.PullRequestListOptions{
 			Head:        options.SourceBranch,
 			Base:        options.TargetBranch,
 			State:       options.State,
@@ -159,20 +119,13 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 }
 
 func (n Platform) AuthMethod(repo api.Repository) githttp.AuthMethod {
-	token, err := roundTripperToAccessToken(repo.RoundTripper)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to get access token")
-	}
-
 	return &githttp.BasicAuth{
-		Username: strconv.FormatInt(n.appId, 10),
-		Password: token,
+		Username: n.username,
+		Password: n.accessToken,
 	}
 }
 
 func (n Platform) CommitAndPush(repo api.Repository, base string, branch string, message string, dir string) error {
-	client := repo.InternalClient.(*github.Client)
-
 	// prepare tree
 	var entries []*github.TreeEntry
 
@@ -215,13 +168,13 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 	}
 
 	// create tree
-	tree, _, err := client.Git.CreateTree(context.Background(), repo.Namespace, repo.Name, base, entries)
+	tree, _, err := n.client.Git.CreateTree(context.Background(), repo.Namespace, repo.Name, base, entries)
 	if err != nil {
 		return fmt.Errorf("failed to create tree: %w", err)
 	}
 
 	// commit tree
-	commit, _, err := client.Git.CreateCommit(context.Background(), repo.Namespace, repo.Name, &github.Commit{
+	commit, _, err := n.client.Git.CreateCommit(context.Background(), repo.Namespace, repo.Name, &github.Commit{
 		Message: github.String(message),
 		Tree:    tree,
 		Parents: []*github.Commit{{SHA: github.String(base)}},
@@ -231,9 +184,9 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 	}
 
 	// create or update remote reference
-	_, _, getRefErr := client.Git.GetRef(context.Background(), repo.Namespace, repo.Name, "refs/heads/"+branch)
+	_, _, getRefErr := n.client.Git.GetRef(context.Background(), repo.Namespace, repo.Name, "refs/heads/"+branch)
 	if getRefErr != nil {
-		_, _, createRefErr := client.Git.CreateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
+		_, _, createRefErr := n.client.Git.CreateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
 			Ref:    github.String("refs/heads/" + branch),
 			Object: &github.GitObject{SHA: commit.SHA},
 		})
@@ -241,7 +194,7 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 			return fmt.Errorf("failed to create remote branch reference: %w", createRefErr)
 		}
 	} else {
-		_, _, refErr := client.Git.UpdateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
+		_, _, refErr := n.client.Git.UpdateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
 			Ref:    github.String("refs/heads/" + branch),
 			Object: &github.GitObject{SHA: commit.SHA},
 		}, true)
@@ -268,11 +221,10 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 }
 
 func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBranch string, title string, description string, key string) error {
-	client := repository.InternalClient.(*github.Client)
 	description = fmt.Sprintf("%s\n\n<!--vcs-merge-request-key:%s-->", description, key)
 
 	// search merge request
-	prs, _, err := client.PullRequests.List(context.Background(), repository.Namespace, repository.Name, &github.PullRequestListOptions{
+	prs, _, err := n.client.PullRequests.List(context.Background(), repository.Namespace, repository.Name, &github.PullRequestListOptions{
 		Head:  sourceBranch,
 		Base:  repository.DefaultBranch,
 		State: "open",
@@ -295,7 +247,7 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 
 	if existingPR != nil {
 		log.Debug().Int64("id", existingPR.GetID()).Int("number", existingPR.GetNumber()).Str("source-branch", sourceBranch).Str("target-branch", repository.DefaultBranch).Msg("found existing pull request, updating")
-		_, _, updateErr := client.PullRequests.Edit(context.Background(), repository.Namespace, repository.Name, existingPR.GetNumber(), &github.PullRequest{
+		_, _, updateErr := n.client.PullRequests.Edit(context.Background(), repository.Namespace, repository.Name, existingPR.GetNumber(), &github.PullRequest{
 			Title: github.String(title),
 			Body:  github.String(description),
 		})
@@ -304,7 +256,7 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 		}
 	} else {
 		log.Debug().Str("source_branch", sourceBranch).Str("target_branch", repository.DefaultBranch).Str("title", title).Msg("no existing pull request found, creating")
-		_, _, createErr := client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
+		_, _, createErr := n.client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
 			Base:  github.String(repository.DefaultBranch),
 			Head:  github.String(sourceBranch),
 			Title: github.String(title),
@@ -385,10 +337,8 @@ func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release,
 }
 
 func (n Platform) CreateTag(repository api.Repository, tagName string, commitHash string, message string) error {
-	client := repository.InternalClient.(*github.Client)
-
 	// create tag
-	tag, _, err := client.Git.CreateTag(context.Background(), repository.Namespace, repository.Name, &github.Tag{
+	tag, _, err := n.client.Git.CreateTag(context.Background(), repository.Namespace, repository.Name, &github.Tag{
 		Tag:     github.String(tagName),
 		SHA:     github.String(commitHash),
 		Message: github.String(message),
@@ -399,7 +349,7 @@ func (n Platform) CreateTag(repository api.Repository, tagName string, commitHas
 	}
 
 	// create ref
-	_, _, err = client.Git.CreateRef(context.Background(), repository.Namespace, repository.Name, &github.Reference{
+	_, _, err = n.client.Git.CreateRef(context.Background(), repository.Namespace, repository.Name, &github.Reference{
 		Ref:    github.String("refs/tags/" + tagName),
 		Object: tag.GetObject(),
 	})
@@ -412,15 +362,10 @@ func (n Platform) CreateTag(repository api.Repository, tagName string, commitHas
 
 // NewPlatform creates a GitHub platform
 func NewPlatform(config Config) (Platform, error) {
-	tr, err := ghinstallation.NewAppsTransport(sharedTransport, config.AppId, []byte(config.PrivateKey))
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create installation transport")
-	}
-
 	platform := Platform{
-		appId:      config.AppId,
-		privateKey: config.PrivateKey,
-		client:     github.NewClient(&http.Client{Transport: tr}),
+		username:    config.Username,
+		accessToken: config.AccessToken,
+		client:      github.NewClient(nil).WithAuthToken(config.AccessToken),
 	}
 
 	return platform, nil

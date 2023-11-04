@@ -7,6 +7,7 @@ import (
 
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/cidverse/go-vcsapp/pkg/platform/githubapp"
+	"github.com/cidverse/go-vcsapp/pkg/platform/githubuser"
 	"github.com/cidverse/go-vcsapp/pkg/platform/gitlabuser"
 )
 
@@ -16,6 +17,8 @@ const (
 	GithubAppId             = "GITHUB_APP_ID"
 	GithubAppPrivateKey     = "GITHUB_APP_PRIVATE_KEY"
 	GithubAppPrivateKeyFile = "GITHUB_APP_PRIVATE_KEY_FILE"
+	GithubUsername          = "GITHUB_USERNAME"
+	GithubToken             = "GITHUB_TOKEN"
 	GitlabServer            = "GITLAB_SERVER"
 	GitlabAccessToken       = "GITLAB_ACCESS_TOKEN"
 )
@@ -34,6 +37,16 @@ func GetPlatformFromEnvironment() (api.Platform, error) {
 	}
 	if mapHasKey(env, AuthorEMail) {
 		author.Email = env[AuthorEMail]
+	}
+
+	// GitLab - as user
+	if mapHasKey(env, GitlabServer) && mapHasKey(env, GitlabAccessToken) {
+		platform, err := gitlabuser.NewPlatform(gitlabuser.Config{
+			Server:      env[GitlabServer],
+			Author:      author,
+			AccessToken: env[GitlabAccessToken],
+		})
+		return platform, err
 	}
 
 	// GitHub - as application
@@ -61,12 +74,11 @@ func GetPlatformFromEnvironment() (api.Platform, error) {
 		return platform, err
 	}
 
-	// GitLab - as user
-	if mapHasKey(env, GitlabServer) && mapHasKey(env, GitlabAccessToken) {
-		platform, err := gitlabuser.NewPlatform(gitlabuser.Config{
-			Server:      env[GitlabServer],
-			Author:      author,
-			AccessToken: env[GitlabAccessToken],
+	// GitHub - as user
+	if mapHasKey(env, GithubUsername) && mapHasKey(env, GithubToken) {
+		platform, err := githubuser.NewPlatform(githubuser.Config{
+			Username:    env[GithubUsername],
+			AccessToken: env[GithubToken],
 		})
 		return platform, err
 	}
