@@ -38,25 +38,26 @@ type Platform interface {
 }
 
 type Repository struct {
-	CrossPlatformId string            // unique repository id across all platforms
-	Id              int64             // the id of the repository
-	Namespace       string            // the namespace of the repository (e.g. organization or user)
-	Name            string            // the name of the repository
-	Description     string            // the description of the repository
-	Type            string            // repository type - valid values: git
-	URL             string            // the url of the repository
-	CloneURL        string            // the clone url of the repository
-	DefaultBranch   string            // the default branch of the repository
-	Branches        []string          // list of all branches
-	Topics          []string          // list of all topics
-	LicenseName     string            // the name of the license
-	LicenseURL      string            // the url of the license
-	CommitHash      string            // the commit hash of the latest commit on the default branch
-	CommitDate      *time.Time        // the commit date of the latest commit on the default branch
-	CreatedAt       *time.Time        // the creation date of the repository
-	RoundTripper    http.RoundTripper `json:"-" yaml:"-"` // this is a platform specific round tripper for the repository (GitHub apps require an org-scoped round tripper)
-	InternalClient  interface{}       `json:"-" yaml:"-"` // this is a platform specific client for the repository (GitHub apps require an org-scoped client)
-	InternalRepo    interface{}       `json:"-" yaml:"-"` // this is the original repository object from the platform
+	PlatformId     string            // the platform id
+	PlatformType   string            // the platform type
+	Id             int64             // the id of the repository
+	Namespace      string            // the namespace of the repository (e.g. organization or user)
+	Name           string            // the name of the repository
+	Description    string            // the description of the repository
+	Type           string            // repository type - valid values: git
+	URL            string            // the url of the repository
+	CloneURL       string            // the clone url of the repository
+	DefaultBranch  string            // the default branch of the repository
+	Branches       []string          // list of all branches
+	Topics         []string          // list of all topics
+	LicenseName    string            // the name of the license
+	LicenseURL     string            // the url of the license
+	CommitHash     string            // the commit hash of the latest commit on the default branch
+	CommitDate     *time.Time        // the commit date of the latest commit on the default branch
+	CreatedAt      *time.Time        // the creation date of the repository
+	RoundTripper   http.RoundTripper `json:"-" yaml:"-"` // this is a platform specific round tripper for the repository (GitHub apps require an org-scoped round tripper)
+	InternalClient interface{}       `json:"-" yaml:"-"` // this is a platform specific client for the repository (GitHub apps require an org-scoped client)
+	InternalRepo   interface{}       `json:"-" yaml:"-"` // this is the original repository object from the platform
 }
 
 type MergeRequest struct {

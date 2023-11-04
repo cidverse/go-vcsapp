@@ -83,25 +83,22 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 		log.Debug().Str("org", installation.Account.GetLogin()).Int("count", len(repositories)).Msg("github platform - found repositories in organization")
 
 		for _, repo := range repositories {
-			// head commit hash
-
-			// query branches
-
 			r := api.Repository{
-				CrossPlatformId: fmt.Sprintf("github-%d", repo.GetID()),
-				Id:              repo.GetID(),
-				Namespace:       repo.GetOwner().GetLogin(),
-				Name:            repo.GetName(),
-				Description:     repo.GetDescription(),
-				Type:            "git",
-				URL:             strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
-				CloneURL:        repo.GetCloneURL(),
-				DefaultBranch:   repo.GetDefaultBranch(),
-				Topics:          repo.Topics,
-				CreatedAt:       repo.CreatedAt.GetTime(),
-				RoundTripper:    itr,
-				InternalClient:  orgClient,
-				InternalRepo:    repo,
+				PlatformId:     api.GetServerIdFromCloneURL(repo.GetCloneURL()),
+				PlatformType:   "github",
+				Id:             repo.GetID(),
+				Namespace:      repo.GetOwner().GetLogin(),
+				Name:           repo.GetName(),
+				Description:    repo.GetDescription(),
+				Type:           "git",
+				URL:            strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
+				CloneURL:       repo.GetCloneURL(),
+				DefaultBranch:  repo.GetDefaultBranch(),
+				Topics:         repo.Topics,
+				CreatedAt:      repo.CreatedAt.GetTime(),
+				RoundTripper:   itr,
+				InternalClient: orgClient,
+				InternalRepo:   repo,
 			}
 			if repo.GetLicense() != nil {
 				r.LicenseName = repo.GetLicense().GetName()
