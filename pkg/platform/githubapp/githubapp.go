@@ -172,6 +172,15 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	return result, nil
 }
 
+func (n Platform) Languages(repo api.Repository) (map[string]int, error) {
+	data, _, err := repo.InternalClient.(*github.Client).Repositories.ListLanguages(context.Background(), repo.Namespace, repo.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list languages: %w", err)
+	}
+
+	return data, err
+}
+
 func (n Platform) AuthMethod(repo api.Repository) githttp.AuthMethod {
 	token, err := roundTripperToAccessToken(repo.RoundTripper)
 	if err != nil {

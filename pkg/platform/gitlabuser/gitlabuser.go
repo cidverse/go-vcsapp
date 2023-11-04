@@ -148,6 +148,20 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	return result, nil
 }
 
+func (n Platform) Languages(repo api.Repository) (map[string]int, error) {
+	result := make(map[string]int)
+
+	languages, _, err := n.client.Projects.GetProjectLanguages(repo.Id, nil)
+	if err != nil {
+		return result, fmt.Errorf("failed to get languages: %w", err)
+	}
+	for language, lines := range *languages {
+		result[language] = int(lines)
+	}
+
+	return result, nil
+}
+
 func (n Platform) CommitAndPush(repo api.Repository, base string, branch string, message string, dir string) error {
 	// open repo
 	r, err := git.PlainOpen(dir)

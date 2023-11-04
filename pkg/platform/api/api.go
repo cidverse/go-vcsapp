@@ -17,6 +17,8 @@ type Platform interface {
 	Repositories(opts RepositoryListOpts) ([]Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
 	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
+	// Languages returns a map of used languages and their line count
+	Languages(repository Repository) (map[string]int, error)
 	// AuthMethod returns the authentication method used by the platform, required to push changes
 	AuthMethod(repository Repository) githttp.AuthMethod
 	// CommitAndPush creates a commit in the repository and pushes it to the remote
