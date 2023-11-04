@@ -65,16 +65,19 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 
 	for _, repo := range repositories {
 		r := api.Repository{
-			Id:            int64(repo.ID),
-			Namespace:     repo.Namespace.FullPath,
-			Name:          repo.Name,
-			Description:   repo.Description,
-			Type:          "git",
-			URL:           strings.TrimPrefix(repo.WebURL, "https://"),
-			CloneURL:      repo.HTTPURLToRepo,
-			DefaultBranch: repo.DefaultBranch,
-			LicenseURL:    repo.LicenseURL,
-			CreatedAt:     repo.CreatedAt,
+			CrossPlatformId: fmt.Sprintf("github-%d", repo.ID),
+			Id:              int64(repo.ID),
+			Namespace:       repo.Namespace.FullPath,
+			Name:            repo.Name,
+			Description:     repo.Description,
+			Type:            "git",
+			URL:             strings.TrimPrefix(repo.WebURL, "https://"),
+			CloneURL:        repo.HTTPURLToRepo,
+			DefaultBranch:   repo.DefaultBranch,
+			Topics:          repo.Topics,
+			LicenseURL:      repo.LicenseURL,
+			CreatedAt:       repo.CreatedAt,
+			InternalRepo:    repo,
 		}
 		if repo.License != nil {
 			r.LicenseName = repo.License.Name

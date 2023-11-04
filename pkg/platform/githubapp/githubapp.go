@@ -88,17 +88,20 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 			// query branches
 
 			r := api.Repository{
-				Id:             repo.GetID(),
-				Namespace:      repo.GetOwner().GetLogin(),
-				Name:           repo.GetName(),
-				Description:    repo.GetDescription(),
-				Type:           "git",
-				URL:            strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
-				CloneURL:       repo.GetCloneURL(),
-				DefaultBranch:  repo.GetDefaultBranch(),
-				CreatedAt:      repo.CreatedAt.GetTime(),
-				RoundTripper:   itr,
-				InternalClient: orgClient,
+				CrossPlatformId: fmt.Sprintf("github-%d", repo.GetID()),
+				Id:              repo.GetID(),
+				Namespace:       repo.GetOwner().GetLogin(),
+				Name:            repo.GetName(),
+				Description:     repo.GetDescription(),
+				Type:            "git",
+				URL:             strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
+				CloneURL:        repo.GetCloneURL(),
+				DefaultBranch:   repo.GetDefaultBranch(),
+				Topics:          repo.Topics,
+				CreatedAt:       repo.CreatedAt.GetTime(),
+				RoundTripper:    itr,
+				InternalClient:  orgClient,
+				InternalRepo:    repo,
 			}
 			if repo.GetLicense() != nil {
 				r.LicenseName = repo.GetLicense().GetName()
