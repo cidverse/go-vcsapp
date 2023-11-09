@@ -49,6 +49,7 @@ type Repository struct {
 	Type           string            // repository type - valid values: git
 	URL            string            // the url of the repository
 	CloneURL       string            // the clone url of the repository
+	CloneSSH       string            // the clone ssh url of the repository
 	DefaultBranch  string            // the default branch of the repository
 	Branches       []string          // list of all branches
 	Topics         []string          // list of all topics

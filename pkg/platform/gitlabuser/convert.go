@@ -18,6 +18,7 @@ func convertRepository(repo *gitlab.Project) api.Repository {
 		Type:          "git",
 		URL:           strings.TrimPrefix(repo.WebURL, "https://"),
 		CloneURL:      repo.HTTPURLToRepo,
+		CloneSSH:      repo.SSHURLToRepo,
 		DefaultBranch: repo.DefaultBranch,
 		Topics:        repo.Topics,
 		LicenseURL:    repo.LicenseURL,

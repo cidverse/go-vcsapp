@@ -93,6 +93,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 				Type:           "git",
 				URL:            strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
 				CloneURL:       repo.GetCloneURL(),
+				CloneSSH:       repo.GetSSHURL(),
 				DefaultBranch:  repo.GetDefaultBranch(),
 				Topics:         repo.Topics,
 				CreatedAt:      repo.CreatedAt.GetTime(),
