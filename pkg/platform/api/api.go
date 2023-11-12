@@ -51,6 +51,7 @@ type Repository struct {
 	CloneURL       string            // the clone url of the repository
 	CloneSSH       string            // the clone ssh url of the repository
 	DefaultBranch  string            // the default branch of the repository
+	IsFork         bool              // is this repository a fork
 	Branches       []string          // list of all branches
 	Topics         []string          // list of all topics
 	LicenseName    string            // the name of the license

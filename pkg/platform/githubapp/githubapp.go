@@ -95,6 +95,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 				CloneURL:       repo.GetCloneURL(),
 				CloneSSH:       repo.GetSSHURL(),
 				DefaultBranch:  repo.GetDefaultBranch(),
+				IsFork:         repo.GetFork(),
 				Topics:         repo.Topics,
 				CreatedAt:      repo.CreatedAt.GetTime(),
 				RoundTripper:   itr,

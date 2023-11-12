@@ -20,6 +20,7 @@ func convertRepository(repo *gitlab.Project) api.Repository {
 		CloneURL:      repo.HTTPURLToRepo,
 		CloneSSH:      repo.SSHURLToRepo,
 		DefaultBranch: repo.DefaultBranch,
+		IsFork:        repo.ForkedFromProject != nil,
 		Topics:        repo.Topics,
 		LicenseURL:    repo.LicenseURL,
 		CreatedAt:     repo.CreatedAt,
