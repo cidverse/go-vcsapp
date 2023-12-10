@@ -6,7 +6,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.8.0
 	github.com/cidverse/go-vcs v0.0.0-20230828222442-5c163d63715f
 	github.com/go-git/go-git/v5 v5.11.0
-	github.com/google/go-github/v56 v56.0.0
+	github.com/google/go-github/v57 v57.0.0
 	github.com/rs/zerolog v1.31.0
 	github.com/xanzy/go-gitlab v0.95.0
 )
@@ -16,7 +16,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
-	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/cloudflare/circl v1.3.6 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
@@ -25,6 +24,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/go-github/v56 v56.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gosimple/slug v1.13.1 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
