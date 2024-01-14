@@ -42,9 +42,9 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	// query repositories
 	var repositories []*gitlab.Project
 	repositoryOpts := &gitlab.ListProjectsOptions{
-		MinAccessLevel: gitlab.AccessLevel(gitlab.MaintainerPermissions),
-		Membership:     gitlab.Bool(true),
-		Archived:       gitlab.Bool(false),
+		MinAccessLevel: gitlab.Ptr(gitlab.MaintainerPermissions),
+		Membership:     gitlab.Ptr(true),
+		Archived:       gitlab.Ptr(false),
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},
@@ -106,9 +106,9 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 
 	var mergeRequests []*gitlab.MergeRequest
 	opts := &gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: gitlab.String(options.SourceBranch),
-		TargetBranch: gitlab.String(options.TargetBranch),
-		State:        gitlab.String(options.State),
+		SourceBranch: gitlab.Ptr(options.SourceBranch),
+		TargetBranch: gitlab.Ptr(options.TargetBranch),
+		State:        gitlab.Ptr(options.State),
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},
@@ -175,7 +175,6 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 			Email: n.author.Email,
 			When:  time.Now(),
 		},
-		// SignKey:
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create commit: %w", err)
@@ -196,12 +195,12 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 
 func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch string, title string, description string) error {
 	_, _, err := n.client.MergeRequests.CreateMergeRequest(int(repository.Id), &gitlab.CreateMergeRequestOptions{
-		Title:              gitlab.String(title),
-		Description:        gitlab.String(description),
-		SourceBranch:       gitlab.String(sourceBranch),
-		TargetBranch:       gitlab.String(repository.DefaultBranch),
-		RemoveSourceBranch: gitlab.Bool(true),
-		Squash:             gitlab.Bool(true),
+		Title:              gitlab.Ptr(title),
+		Description:        gitlab.Ptr(description),
+		SourceBranch:       gitlab.Ptr(sourceBranch),
+		TargetBranch:       gitlab.Ptr(repository.DefaultBranch),
+		RemoveSourceBranch: gitlab.Ptr(true),
+		Squash:             gitlab.Ptr(true),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create merge request: %w", err)
@@ -215,9 +214,9 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 
 	// Search for an existing merge request with the same source branch
 	mrs, _, err := n.client.MergeRequests.ListProjectMergeRequests(int(repository.Id), &gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: gitlab.String(sourceBranch),
-		TargetBranch: gitlab.String(repository.DefaultBranch),
-		State:        gitlab.String("opened"),
+		SourceBranch: gitlab.Ptr(sourceBranch),
+		TargetBranch: gitlab.Ptr(repository.DefaultBranch),
+		State:        gitlab.Ptr("opened"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list merge requests: %w", err)
@@ -238,12 +237,12 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 		}
 	} else {
 		_, _, createErr := n.client.MergeRequests.CreateMergeRequest(int(repository.Id), &gitlab.CreateMergeRequestOptions{
-			Title:              gitlab.String(title),
-			Description:        gitlab.String(description),
-			SourceBranch:       gitlab.String(sourceBranch),
-			TargetBranch:       gitlab.String(repository.DefaultBranch),
-			RemoveSourceBranch: gitlab.Bool(true),
-			Squash:             gitlab.Bool(true),
+			Title:              gitlab.Ptr(title),
+			Description:        gitlab.Ptr(description),
+			SourceBranch:       gitlab.Ptr(sourceBranch),
+			TargetBranch:       gitlab.Ptr(repository.DefaultBranch),
+			RemoveSourceBranch: gitlab.Ptr(true),
+			Squash:             gitlab.Ptr(true),
 		})
 		if createErr != nil {
 			return fmt.Errorf("failed to create merge request: %w", createErr)
@@ -263,7 +262,7 @@ func (n Platform) AuthMethod(repo api.Repository) githttp.AuthMethod {
 func (n Platform) FileContent(repository api.Repository, branch string, path string) (string, error) {
 	// query file
 	file, _, err := n.client.RepositoryFiles.GetFile(int(repository.Id), path, &gitlab.GetFileOptions{
-		Ref: gitlab.String(branch),
+		Ref: gitlab.Ptr(branch),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get file: %w", err)
@@ -331,9 +330,9 @@ func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release,
 
 func (n Platform) CreateTag(repository api.Repository, tag string, commitHash string, message string) error {
 	_, _, err := n.client.Tags.CreateTag(int(repository.Id), &gitlab.CreateTagOptions{
-		TagName: gitlab.String(tag),
-		Ref:     gitlab.String(commitHash),
-		Message: gitlab.String(message),
+		TagName: gitlab.Ptr(tag),
+		Ref:     gitlab.Ptr(commitHash),
+		Message: gitlab.Ptr(message),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create tag: %w", err)

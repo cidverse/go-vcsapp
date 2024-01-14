@@ -220,13 +220,16 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 		// read file content
 		content, readErr := os.ReadFile(filepath.Join(dir, file))
 		if readErr != nil {
-			return fmt.Errorf("failed to read file: %w", err)
+			return fmt.Errorf("failed to read file: %w", readErr)
 		}
+
+		// patch content
+		contentStr := api.UnifyLineEndings(string(content))
 
 		// get permissions
 		fileStats, statsErr := os.Stat(filepath.Join(dir, file))
 		if statsErr != nil {
-			return fmt.Errorf("failed to get file stats: %w", err)
+			return fmt.Errorf("failed to get file stats: %w", statsErr)
 		}
 		mode := "100644"
 		if fileStats.Mode()&os.FileMode(0111) != 0 {
@@ -235,7 +238,7 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 		entries = append(entries, &github.TreeEntry{
 			Path:    github.String(file),
 			Type:    github.String("blob"),
-			Content: github.String(string(content)),
+			Content: github.String(contentStr),
 			Mode:    github.String(mode),
 		})
 	}
