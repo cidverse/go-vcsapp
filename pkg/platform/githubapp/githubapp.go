@@ -217,17 +217,22 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 		return fmt.Errorf("failed to get status: %w", err)
 	}
 	for file := range status {
+		filePath := filepath.Join(dir, file)
+
+		// deleted file
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			continue
+		}
+
 		// read file content
-		content, readErr := os.ReadFile(filepath.Join(dir, file))
+		content, readErr := os.ReadFile(filePath)
 		if readErr != nil {
 			return fmt.Errorf("failed to read file: %w", readErr)
 		}
-
-		// patch content
 		contentStr := api.UnifyLineEndings(string(content))
 
 		// get permissions
-		fileStats, statsErr := os.Stat(filepath.Join(dir, file))
+		fileStats, statsErr := os.Stat(filePath)
 		if statsErr != nil {
 			return fmt.Errorf("failed to get file stats: %w", statsErr)
 		}
