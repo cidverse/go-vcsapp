@@ -221,6 +221,12 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 
 		// deleted file
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			entries = append(entries, &github.TreeEntry{
+				Path: github.String(file),
+				Type: github.String("blob"),
+				Mode: github.String("100644"),
+				SHA:  nil,
+			})
 			continue
 		}
 
@@ -238,7 +244,7 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 		}
 		mode := "100644"
 		if fileStats.Mode()&os.FileMode(0111) != 0 {
-			mode = "100744"
+			mode = "100744" // executable files
 		}
 		entries = append(entries, &github.TreeEntry{
 			Path:    github.String(file),
