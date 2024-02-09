@@ -13,7 +13,7 @@ import (
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/google/go-github/v58/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/rs/zerolog/log"
 )
 
