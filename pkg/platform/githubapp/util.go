@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v59/github"
+	"github.com/google/go-github/v60/github"
 )
 
 // branchSliceToNameSlice converts a slice of branches to a slice of branch names
