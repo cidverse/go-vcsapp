@@ -8,7 +8,7 @@ require (
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/google/go-github/v60 v60.0.0
 	github.com/rs/zerolog v1.32.0
-	github.com/xanzy/go-gitlab v0.99.0
+	github.com/xanzy/go-gitlab v0.100.0
 )
 
 require (
