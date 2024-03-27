@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cidverse/go-ptr"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -42,9 +43,9 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	// query repositories
 	var repositories []*gitlab.Project
 	repositoryOpts := &gitlab.ListProjectsOptions{
-		MinAccessLevel: gitlab.Ptr(gitlab.MaintainerPermissions),
-		Membership:     gitlab.Ptr(true),
-		Archived:       gitlab.Ptr(false),
+		MinAccessLevel: ptr.Ptr(gitlab.MaintainerPermissions),
+		Membership:     ptr.True(),
+		Archived:       ptr.False(),
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},
@@ -106,9 +107,9 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 
 	var mergeRequests []*gitlab.MergeRequest
 	opts := &gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: gitlab.Ptr(options.SourceBranch),
-		TargetBranch: gitlab.Ptr(options.TargetBranch),
-		State:        gitlab.Ptr(options.State),
+		SourceBranch: ptr.Ptr(options.SourceBranch),
+		TargetBranch: ptr.Ptr(options.TargetBranch),
+		State:        ptr.Ptr(options.State),
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},
@@ -195,12 +196,12 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 
 func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch string, title string, description string) error {
 	_, _, err := n.client.MergeRequests.CreateMergeRequest(int(repository.Id), &gitlab.CreateMergeRequestOptions{
-		Title:              gitlab.Ptr(title),
-		Description:        gitlab.Ptr(description),
-		SourceBranch:       gitlab.Ptr(sourceBranch),
-		TargetBranch:       gitlab.Ptr(repository.DefaultBranch),
-		RemoveSourceBranch: gitlab.Ptr(true),
-		Squash:             gitlab.Ptr(true),
+		Title:              ptr.Ptr(title),
+		Description:        ptr.Ptr(description),
+		SourceBranch:       ptr.Ptr(sourceBranch),
+		TargetBranch:       ptr.Ptr(repository.DefaultBranch),
+		RemoveSourceBranch: ptr.True(),
+		Squash:             ptr.True(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create merge request: %w", err)
@@ -214,9 +215,9 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 
 	// Search for an existing merge request with the same source branch
 	mrs, _, err := n.client.MergeRequests.ListProjectMergeRequests(int(repository.Id), &gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: gitlab.Ptr(sourceBranch),
-		TargetBranch: gitlab.Ptr(repository.DefaultBranch),
-		State:        gitlab.Ptr("opened"),
+		SourceBranch: ptr.Ptr(sourceBranch),
+		TargetBranch: ptr.Ptr(repository.DefaultBranch),
+		State:        ptr.Ptr("opened"),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list merge requests: %w", err)
@@ -237,12 +238,12 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 		}
 	} else {
 		_, _, createErr := n.client.MergeRequests.CreateMergeRequest(int(repository.Id), &gitlab.CreateMergeRequestOptions{
-			Title:              gitlab.Ptr(title),
-			Description:        gitlab.Ptr(description),
-			SourceBranch:       gitlab.Ptr(sourceBranch),
-			TargetBranch:       gitlab.Ptr(repository.DefaultBranch),
-			RemoveSourceBranch: gitlab.Ptr(true),
-			Squash:             gitlab.Ptr(true),
+			Title:              ptr.Ptr(title),
+			Description:        ptr.Ptr(description),
+			SourceBranch:       ptr.Ptr(sourceBranch),
+			TargetBranch:       ptr.Ptr(repository.DefaultBranch),
+			RemoveSourceBranch: ptr.True(),
+			Squash:             ptr.True(),
 		})
 		if createErr != nil {
 			return fmt.Errorf("failed to create merge request: %w", createErr)

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/cidverse/go-ptr"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -222,9 +223,9 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 		// deleted file
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			entries = append(entries, &github.TreeEntry{
-				Path: github.String(file),
-				Type: github.String("blob"),
-				Mode: github.String("100644"),
+				Path: ptr.Ptr(file),
+				Type: ptr.Ptr("blob"),
+				Mode: ptr.Ptr("100644"),
 				SHA:  nil,
 			})
 			continue
@@ -247,10 +248,10 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 			mode = "100744" // executable files
 		}
 		entries = append(entries, &github.TreeEntry{
-			Path:    github.String(file),
-			Type:    github.String("blob"),
-			Content: github.String(contentStr),
-			Mode:    github.String(mode),
+			Path:    ptr.Ptr(file),
+			Type:    ptr.Ptr("blob"),
+			Content: ptr.Ptr(contentStr),
+			Mode:    ptr.Ptr(mode),
 		})
 	}
 
@@ -295,10 +296,10 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 
 func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch string, title string, description string) error {
 	_, _, err := repository.InternalClient.(*github.Client).PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
-		Base:  github.String(repository.DefaultBranch),
-		Head:  github.String(sourceBranch),
-		Title: github.String(title),
-		Body:  github.String(description),
+		Base:  ptr.Ptr(repository.DefaultBranch),
+		Head:  ptr.Ptr(sourceBranch),
+		Title: ptr.Ptr(title),
+		Body:  ptr.Ptr(description),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create merge request: %w", err)
@@ -336,8 +337,8 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 	if existingPR != nil {
 		log.Debug().Int64("id", existingPR.GetID()).Int("number", existingPR.GetNumber()).Str("source-branch", sourceBranch).Str("target-branch", repository.DefaultBranch).Msg("found existing pull request, updating")
 		_, _, updateErr := client.PullRequests.Edit(context.Background(), repository.Namespace, repository.Name, existingPR.GetNumber(), &github.PullRequest{
-			Title: github.String(title),
-			Body:  github.String(description),
+			Title: ptr.Ptr(title),
+			Body:  ptr.Ptr(description),
 		})
 		if updateErr != nil {
 			return fmt.Errorf("failed to update pull request: %w", updateErr)
@@ -345,10 +346,10 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 	} else {
 		log.Debug().Str("source_branch", sourceBranch).Str("target_branch", repository.DefaultBranch).Str("title", title).Msg("no existing pull request found, creating")
 		_, _, createErr := client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
-			Base:  github.String(repository.DefaultBranch),
-			Head:  github.String(sourceBranch),
-			Title: github.String(title),
-			Body:  github.String(description),
+			Base:  ptr.Ptr(repository.DefaultBranch),
+			Head:  ptr.Ptr(sourceBranch),
+			Title: ptr.Ptr(title),
+			Body:  ptr.Ptr(description),
 		})
 		if createErr != nil {
 			return fmt.Errorf("failed to create merge request: %w", createErr)
@@ -429,10 +430,10 @@ func (n Platform) CreateTag(repository api.Repository, tagName string, commitHas
 
 	// create tag
 	tag, _, err := client.Git.CreateTag(context.Background(), repository.Namespace, repository.Name, &github.Tag{
-		Tag:     github.String(tagName),
-		SHA:     github.String(commitHash),
-		Message: github.String(message),
-		Object:  &github.GitObject{Type: github.String("commit"), SHA: github.String(commitHash)},
+		Tag:     ptr.Ptr(tagName),
+		SHA:     ptr.Ptr(commitHash),
+		Message: ptr.Ptr(message),
+		Object:  &github.GitObject{Type: ptr.Ptr("commit"), SHA: ptr.Ptr(commitHash)},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create tag: %w", err)
@@ -440,7 +441,7 @@ func (n Platform) CreateTag(repository api.Repository, tagName string, commitHas
 
 	// create ref
 	_, _, err = client.Git.CreateRef(context.Background(), repository.Namespace, repository.Name, &github.Reference{
-		Ref:    github.String("refs/tags/" + tagName),
+		Ref:    ptr.Ptr("refs/tags/" + tagName),
 		Object: tag.GetObject(),
 	})
 	if err != nil {
