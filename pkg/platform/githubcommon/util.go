@@ -1,4 +1,4 @@
-package githubuser
+package githubcommon
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"github.com/google/go-github/v60/github"
 )
 
-// branchSliceToNameSlice converts a slice of branches to a slice of branch names
-func branchSliceToNameSlice(branches []*github.Branch) []string {
+// BranchSliceToNameSlice converts a slice of branches to a slice of branch names
+func BranchSliceToNameSlice(branches []*github.Branch) []string {
 	var branchNames []string
 	for _, branch := range branches {
 		branchNames = append(branchNames, branch.GetName())
@@ -19,8 +19,8 @@ func branchSliceToNameSlice(branches []*github.Branch) []string {
 	return branchNames
 }
 
-// roundTripperToAccessToken takes a ghinstallation round-tripper and obtains a new access token
-func roundTripperToAccessToken(rt http.RoundTripper) (string, error) {
+// RoundTripperToAccessToken takes a ghinstallation round-tripper and obtains a new access token
+func RoundTripperToAccessToken(rt http.RoundTripper) (string, error) {
 	if rt == nil {
 		return "", fmt.Errorf("round tripper is nil")
 	}

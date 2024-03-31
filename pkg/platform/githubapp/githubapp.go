@@ -12,6 +12,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/cidverse/go-ptr"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
+	"github.com/cidverse/go-vcsapp/pkg/platform/githubcommon"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/google/go-github/v60/github"
@@ -126,7 +127,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 					return result, fmt.Errorf("failed to list branches: %w", err)
 				}
 
-				r.Branches = branchSliceToNameSlice(branchList)
+				r.Branches = githubcommon.BranchSliceToNameSlice(branchList)
 			}
 
 			result = append(result, r)
@@ -163,6 +164,10 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	}
 
 	for _, pr := range pullRequests {
+		if options.Draft != nil && pr.GetDraft() != *options.Draft {
+			continue
+		}
+
 		result = append(result, api.MergeRequest{
 			Id:           pr.GetID(),
 			Title:        pr.GetTitle(),
@@ -186,7 +191,7 @@ func (n Platform) Languages(repo api.Repository) (map[string]int, error) {
 }
 
 func (n Platform) AuthMethod(repo api.Repository) githttp.AuthMethod {
-	token, err := roundTripperToAccessToken(repo.RoundTripper)
+	token, err := githubcommon.RoundTripperToAccessToken(repo.RoundTripper)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to get access token")
 	}

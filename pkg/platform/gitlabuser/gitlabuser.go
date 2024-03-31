@@ -110,6 +110,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 		SourceBranch: ptr.Ptr(options.SourceBranch),
 		TargetBranch: ptr.Ptr(options.TargetBranch),
 		State:        ptr.Ptr(options.State),
+		Draft:        options.Draft,
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},

@@ -88,6 +88,7 @@ type MergeRequestSearchOptions struct {
 	SourceBranch string
 	TargetBranch string
 	State        string
+	Draft        *bool // Filter by draft status
 }
 
 type Tag struct {
