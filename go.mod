@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.10.0
-	github.com/cidverse/go-ptr v0.0.0-20240327182856-10c60088e95b
+	github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf
 	github.com/cidverse/go-vcs v0.0.0-20240114124206-55cd79bb1b6b
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/go-github/v60 v60.0.0

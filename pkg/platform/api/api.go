@@ -76,19 +76,25 @@ type MergeRequest struct {
 	// TargetBranch is the target branch of the merge request
 	TargetBranch string
 	// State is the state of the merge request
-	State string
-}
-
-type Author struct {
-	Name  string `yaml:"name"`
-	Email string `yaml:"email"`
+	State MergeRequestState
+	// IsMerged is true if the merge request is merged
+	IsMerged bool
+	// IsLocked is true if the merge request is locked
+	IsLocked bool
+	// IsDraft is true if the merge request is a work in progress / not ready for review
+	IsDraft bool
+	// Author is the author of the merge request
+	Author User
 }
 
 type MergeRequestSearchOptions struct {
-	SourceBranch string
-	TargetBranch string
-	State        string
-	Draft        *bool // Filter by draft status
+	SourceBranch   string
+	TargetBranch   string
+	State          *MergeRequestState
+	IsMerged       *bool   // Filter by merged status
+	IsDraft        *bool   // Filter by draft status
+	AuthorId       *int64  // Filter by author user id
+	AuthorUsername *string // Filter by author username
 }
 
 type Tag struct {
@@ -114,4 +120,21 @@ type Release struct {
 type RepositoryListOpts struct {
 	IncludeBranches   bool
 	IncludeCommitHash bool
+}
+
+type User struct {
+	ID                  int64      `json:"id"`
+	Username            string     `json:"username"`
+	Name                string     `json:"name"`
+	Type                UserType   `json:"type"`
+	State               UserState  `json:"state"`
+	CreatedAt           *time.Time `json:"created_at"`
+	SuspendedAt         *time.Time `json:"suspended_at"`
+	AvatarURL           string     `json:"avatar_url"`
+	GlobalAdministrator bool       `json:"global_administrator"`
+}
+
+type GitAuthor struct {
+	Name  string `yaml:"name"`
+	Email string `yaml:"email"`
 }

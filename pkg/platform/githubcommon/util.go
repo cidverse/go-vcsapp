@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/google/go-github/v60/github"
 )
 
@@ -17,6 +19,37 @@ func BranchSliceToNameSlice(branches []*github.Branch) []string {
 	}
 
 	return branchNames
+}
+
+func ToStandardMergeRequestState(state string) api.MergeRequestState {
+	if state == "open" {
+		return api.MergeRequestStateOpen
+	}
+
+	return api.MergeRequestStateClosed
+}
+
+func ToStandardUser(user *github.User) api.User {
+	if user == nil {
+		return api.User{}
+	}
+
+	state := api.UserStateActive
+	if user.SuspendedAt != nil {
+		state = api.UserStateSuspended
+	}
+
+	return api.User{
+		ID:                  user.GetID(),
+		Username:            user.GetLogin(),
+		Name:                user.GetName(),
+		Type:                api.UserType(strings.ToLower(user.GetType())),
+		State:               state,
+		AvatarURL:           user.GetAvatarURL(),
+		CreatedAt:           user.CreatedAt.GetTime(),
+		SuspendedAt:         user.SuspendedAt.GetTime(),
+		GlobalAdministrator: user.GetSiteAdmin(),
+	}
 }
 
 // RoundTripperToAccessToken takes a ghinstallation round-tripper and obtains a new access token

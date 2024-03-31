@@ -31,7 +31,7 @@ type PlatformConfig struct {
 	GitHubToken             string
 	GitLabServer            string
 	GitLabAccessToken       string
-	Author                  api.Author
+	Author                  api.GitAuthor
 }
 
 func NewPlatform(platformConfig PlatformConfig) (api.Platform, error) {
@@ -87,7 +87,7 @@ func GetPlatformFromEnvironment() (api.Platform, error) {
 	env := getEnvAsMap()
 
 	// author
-	author := api.Author{
+	author := api.GitAuthor{
 		Name:  "vcs-app",
 		Email: "vcs-app@localhost",
 	}

@@ -105,13 +105,20 @@ func (n Platform) FindRepository(path string) (api.Repository, error) {
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
 	var result []api.MergeRequest
 
+	searchState := "all"
+	if options.State != nil && *options.State == api.MergeRequestStateOpen {
+		searchState = "open"
+	} else if options.State != nil && *options.State == api.MergeRequestStateClosed {
+		searchState = "closed"
+	}
+
 	var pullRequests []*github.PullRequest
 	opts := github.ListOptions{PerPage: pageSize}
 	for {
 		data, resp, err := n.client.PullRequests.List(context.Background(), repo.Namespace, repo.Name, &github.PullRequestListOptions{
 			Head:        options.SourceBranch,
 			Base:        options.TargetBranch,
-			State:       options.State,
+			State:       searchState,
 			ListOptions: opts,
 		})
 		if err != nil {
@@ -126,7 +133,16 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	}
 
 	for _, pr := range pullRequests {
-		if options.Draft != nil && pr.GetDraft() != *options.Draft {
+		if options.IsDraft != nil && pr.GetDraft() != ptr.Value(options.IsDraft) {
+			continue
+		}
+		if options.IsMerged != nil && pr.GetMerged() != ptr.Value(options.IsMerged) {
+			continue
+		}
+		if options.AuthorId != nil && pr.GetUser().GetID() != ptr.Value(options.AuthorId) {
+			continue
+		}
+		if options.AuthorUsername != nil && pr.GetUser().GetLogin() != ptr.Value(options.AuthorUsername) {
 			continue
 		}
 
@@ -136,7 +152,11 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			Description:  pr.GetBody(),
 			SourceBranch: pr.GetHead().GetRef(),
 			TargetBranch: pr.GetBase().GetRef(),
-			State:        pr.GetState(),
+			State:        githubcommon.ToStandardMergeRequestState(pr.GetState()),
+			IsMerged:     pr.GetMerged(),
+			IsLocked:     pr.GetLocked(),
+			IsDraft:      pr.GetDraft(),
+			Author:       githubcommon.ToStandardUser(pr.GetUser()),
 		})
 	}
 

@@ -18,7 +18,7 @@ const pageSize = 100
 
 type Platform struct {
 	accessToken string
-	author      api.Author
+	author      api.GitAuthor
 	client      *gitlab.Client
 }
 
@@ -26,7 +26,7 @@ type Config struct {
 	Server      string
 	Username    string
 	AccessToken string
-	Author      api.Author
+	Author      api.GitAuthor
 }
 
 func (n Platform) Name() string {
@@ -105,12 +105,23 @@ func (n Platform) FindRepository(path string) (api.Repository, error) {
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
 	var result []api.MergeRequest
 
+	searchState := "all"
+	if options.IsMerged != nil && *options.IsMerged {
+		searchState = "merged"
+	} else if options.State != nil && *options.State == api.MergeRequestStateOpen {
+		searchState = "opened"
+	} else if options.State != nil && *options.State == api.MergeRequestStateClosed {
+		searchState = "closed"
+	}
+
 	var mergeRequests []*gitlab.MergeRequest
 	opts := &gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: ptr.Ptr(options.SourceBranch),
-		TargetBranch: ptr.Ptr(options.TargetBranch),
-		State:        ptr.Ptr(options.State),
-		Draft:        options.Draft,
+		SourceBranch:   ptr.Ptr(options.SourceBranch),
+		TargetBranch:   ptr.Ptr(options.TargetBranch),
+		State:          ptr.Ptr(searchState),
+		Draft:          options.IsDraft,
+		AuthorID:       ptr.Int64ToInt(options.AuthorId),
+		AuthorUsername: options.AuthorUsername,
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},
@@ -134,7 +145,11 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			Description:  pr.Description,
 			SourceBranch: pr.SourceBranch,
 			TargetBranch: pr.TargetBranch,
-			State:        pr.State,
+			State:        toStandardMergeRequestState(pr.State),
+			IsMerged:     pr.MergedAt != nil,
+			IsLocked:     pr.DiscussionLocked,
+			IsDraft:      pr.WorkInProgress,
+			Author:       toStandardUser(pr.Author),
 		})
 	}
 
