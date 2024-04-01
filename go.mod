@@ -7,7 +7,7 @@ require (
 	github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf
 	github.com/cidverse/go-vcs v0.0.0-20240114124206-55cd79bb1b6b
 	github.com/go-git/go-git/v5 v5.12.0
-	github.com/google/go-github/v60 v60.0.0
+	github.com/google/go-github/v61 v61.0.0
 	github.com/rs/zerolog v1.32.0
 	github.com/xanzy/go-gitlab v0.101.0
 )
@@ -25,6 +25,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/google/go-github/v60 v60.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.5 // indirect
