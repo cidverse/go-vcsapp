@@ -68,7 +68,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 
 		// commit
 		if opts.IncludeCommitHash {
-			commit, _, err := n.client.Commits.GetCommit(repo.ID, repo.DefaultBranch)
+			commit, _, err := n.client.Commits.GetCommit(repo.ID, repo.DefaultBranch, &gitlab.GetCommitOptions{})
 			if err != nil {
 				return result, fmt.Errorf("failed to get commit: %w", err)
 			}
@@ -94,7 +94,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 }
 
 func (n Platform) FindRepository(path string) (api.Repository, error) {
-	repo, _, err := n.client.Projects.GetProject(path, &gitlab.GetProjectOptions{License: gitlab.Bool(true)})
+	repo, _, err := n.client.Projects.GetProject(path, &gitlab.GetProjectOptions{License: gitlab.Ptr(true)})
 	if err != nil {
 		return api.Repository{}, fmt.Errorf("failed to get repository: %w", err)
 	}
