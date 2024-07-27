@@ -20,6 +20,7 @@ var templateFuncMap = template.FuncMap{
 			return false
 		}
 	},
+	"removeIssueMentions": RemoveIssueMentionFromMessage,
 }
 
 func Render(tpl string, data interface{}) ([]byte, error) {
@@ -27,7 +28,11 @@ func Render(tpl string, data interface{}) ([]byte, error) {
 }
 
 func RenderWithCustomDelimiter(tpl string, leftDelimiter string, rightDelimiter string, data interface{}) ([]byte, error) {
-	tmpl, err := template.New("template").Delims(leftDelimiter, rightDelimiter).Funcs(templateFuncMap).Parse(tpl)
+	return RenderCustom(tpl, leftDelimiter, rightDelimiter, data, nil)
+}
+
+func RenderCustom(tpl string, leftDelimiter string, rightDelimiter string, data interface{}, customFuncs template.FuncMap) ([]byte, error) {
+	tmpl, err := template.New("template").Delims(leftDelimiter, rightDelimiter).Funcs(templateFuncMap).Funcs(customFuncs).Parse(tpl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
