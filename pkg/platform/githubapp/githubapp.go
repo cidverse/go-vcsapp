@@ -194,11 +194,46 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			IsMerged:     pr.GetMerged(),
 			IsLocked:     pr.GetLocked(),
 			IsDraft:      pr.GetDraft(),
+			HasConflicts: pr.GetMergeableState() == "dirty", // see https://docs.github.com/en/graphql/reference/enums#mergestatestatus
+			CanMerge:     pr.GetMergeable(),
 			Author:       githubcommon.ToStandardUser(pr.GetUser()),
 		})
 	}
 
 	return result, nil
+}
+
+func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
+	if approved {
+		_, _, err := repo.InternalClient.(*github.Client).PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
+			Event: ptr.Ptr("APPROVE"),
+			Body:  message,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to approve merge request: %w", err)
+		}
+	} else {
+		_, _, err := repo.InternalClient.(*github.Client).PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
+			Event: ptr.Ptr("REQUEST_CHANGES"),
+			Body:  message,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to approve merge request: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest) error {
+	_, _, err := repo.InternalClient.(*github.Client).PullRequests.Merge(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), "", &github.PullRequestOptions{
+		MergeMethod: "squash",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to merge merge request: %w", err)
+	}
+
+	return nil
 }
 
 func (n Platform) Languages(repo api.Repository) (map[string]int, error) {

@@ -19,6 +19,10 @@ type Platform interface {
 	FindRepository(name string) (Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
 	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
+	// SubmitReview submits a review result / approval for a merge request
+	SubmitReview(repo Repository, mergeRequest MergeRequest, approved bool, message *string) error
+	// Merge merges a merge request
+	Merge(repo Repository, mergeRequest MergeRequest) error
 	// Languages returns a map of used languages and their line count
 	Languages(repository Repository) (map[string]int, error)
 	// AuthMethod returns the authentication method used by the platform, required to push changes
@@ -77,12 +81,18 @@ type MergeRequest struct {
 	TargetBranch string
 	// State is the state of the merge request
 	State MergeRequestState
+	// PipelineState is the state of the pipeline
+	PipelineState PipelineState
 	// IsMerged is true if the merge request is merged
 	IsMerged bool
 	// IsLocked is true if the merge request is locked
 	IsLocked bool
 	// IsDraft is true if the merge request is a work in progress / not ready for review
 	IsDraft bool
+	// HasConflicts is true if the merge request has conflicts
+	HasConflicts bool
+	// CanMerge is true if the merge request can be merged (no conflicts, no unresolved discussions, no work in progress, pipeline passed)
+	CanMerge bool
 	// Author is the author of the merge request
 	Author User
 }

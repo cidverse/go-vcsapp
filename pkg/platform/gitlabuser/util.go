@@ -18,7 +18,7 @@ func branchSliceToNameSlice(branches []*gitlab.Branch) []string {
 	return branchNames
 }
 
-func toStandardMergeRequestState(state string) api.MergeRequestState {
+func toMergeRequestState(state string) api.MergeRequestState {
 	if state == "opened" {
 		return api.MergeRequestStateOpen
 	}
@@ -26,7 +26,36 @@ func toStandardMergeRequestState(state string) api.MergeRequestState {
 	return api.MergeRequestStateClosed
 }
 
-func toStandardUser(user *gitlab.BasicUser) api.User {
+func toPipelineState(state string) api.PipelineState {
+	switch state {
+	case "created":
+		return api.PipelineStateCreated
+	case "waiting_for_resource":
+		return api.PipelineStateWaitingForResource
+	case "preparing":
+		return api.PipelineStatePreparing
+	case "pending":
+		return api.PipelineStatePending
+	case "running":
+		return api.PipelineStateRunning
+	case "success":
+		return api.PipelineStateSuccess
+	case "failed":
+		return api.PipelineStateFailed
+	case "canceled":
+		return api.PipelineStateCanceled
+	case "skipped":
+		return api.PipelineStateSkipped
+	case "manual":
+		return api.PipelineStateManual
+	case "scheduled":
+		return api.PipelineStateScheduled
+	default:
+		return api.PipelineStateFailed
+	}
+}
+
+func toUser(user *gitlab.BasicUser) api.User {
 	if user == nil {
 		return api.User{}
 	}

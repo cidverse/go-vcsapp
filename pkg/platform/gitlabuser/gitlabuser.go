@@ -139,21 +139,69 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	}
 
 	for _, pr := range mergeRequests {
-		result = append(result, api.MergeRequest{
+		entry := api.MergeRequest{
 			Id:           int64(pr.ID),
 			Title:        pr.Title,
 			Description:  pr.Description,
 			SourceBranch: pr.SourceBranch,
 			TargetBranch: pr.TargetBranch,
-			State:        toStandardMergeRequestState(pr.State),
+			State:        toMergeRequestState(pr.State),
 			IsMerged:     pr.MergedAt != nil,
 			IsLocked:     pr.DiscussionLocked,
 			IsDraft:      pr.WorkInProgress,
-			Author:       toStandardUser(pr.Author),
-		})
+			HasConflicts: pr.HasConflicts,
+			CanMerge:     pr.DetailedMergeStatus == "mergeable", // see https://docs.gitlab.com/ee/api/merge_requests.html#merge-status
+			Author:       toUser(pr.Author),
+		}
+		if pr.Pipeline != nil {
+			entry.PipelineState = toPipelineState(pr.Pipeline.Status)
+		} else {
+			entry.PipelineState = api.PipelineStateUnknown
+		}
+
+		result = append(result, entry)
 	}
 
 	return result, nil
+}
+
+func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
+	if approved {
+		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(repo.Id, int(mergeRequest.Id), &gitlab.ApproveMergeRequestOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to approve merge request: %w", err)
+		}
+	} else {
+		_, err := n.client.MergeRequestApprovals.UnapproveMergeRequest(repo.Id, int(mergeRequest.Id))
+		if err != nil {
+			return fmt.Errorf("failed to unapprove merge request: %w", err)
+		}
+	}
+
+	/*
+		if message != "" {
+			_, _, err := n.client.Notes.CreateMergeRequestNote(repo.Id, int(mergeRequest.Id), &gitlab.CreateMergeRequestNoteOptions{
+				Body: ptr.Ptr(message),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to create note: %w", err)
+			}
+		}
+	*/
+
+	return nil
+}
+
+func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest) error {
+	_, _, err := n.client.MergeRequests.AcceptMergeRequest(repo.Id, int(mergeRequest.Id), &gitlab.AcceptMergeRequestOptions{
+		Squash:                   ptr.True(),
+		ShouldRemoveSourceBranch: ptr.True(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to resolve merge request: %w", err)
+	}
+
+	return nil
 }
 
 func (n Platform) Languages(repo api.Repository) (map[string]int, error) {
