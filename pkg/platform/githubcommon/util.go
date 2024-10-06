@@ -8,7 +8,7 @@ import (
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
-	"github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 )
 
 // BranchSliceToNameSlice converts a slice of branches to a slice of branch names
