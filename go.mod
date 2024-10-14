@@ -10,7 +10,7 @@ require (
 	github.com/google/go-github/v66 v66.0.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
-	github.com/xanzy/go-gitlab v0.111.0
+	github.com/xanzy/go-gitlab v0.112.0
 )
 
 require (
