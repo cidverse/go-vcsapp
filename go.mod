@@ -9,7 +9,7 @@ require (
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/go-github/v66 v66.0.0
 	github.com/rs/zerolog v1.33.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/xanzy/go-gitlab v0.114.0
 )
 
