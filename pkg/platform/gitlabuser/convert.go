@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
-	"github.com/xanzy/go-gitlab"
+	"gitlab.com/gitlab-org/api/client-go"
 )
 
 func convertRepository(repo *gitlab.Project) api.Repository {

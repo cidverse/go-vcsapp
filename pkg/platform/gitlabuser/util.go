@@ -5,7 +5,7 @@ import (
 
 	"github.com/cidverse/go-ptr"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
-	"github.com/xanzy/go-gitlab"
+	"gitlab.com/gitlab-org/api/client-go"
 )
 
 // branchSliceToNameSlice converts a slice of branches to a slice of branch names
