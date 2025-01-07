@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/cidverse/go-ptr"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/google/go-github/v68/github"
 )
@@ -27,6 +28,14 @@ func ToStandardMergeRequestState(state string) api.MergeRequestState {
 	}
 
 	return api.MergeRequestStateClosed
+}
+
+func ToMergeMethod(mergeStrategyOptions api.MergeStrategyOptions) string {
+	if ptr.ValueOrDefault(mergeStrategyOptions.Squash, false) {
+		return "squash"
+	}
+
+	return ""
 }
 
 func ToStandardUser(user *github.User) api.User {

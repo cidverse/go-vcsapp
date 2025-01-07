@@ -225,9 +225,9 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 	return nil
 }
 
-func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest) error {
+func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, mergeStrategy api.MergeStrategyOptions) error {
 	_, _, err := repo.InternalClient.(*github.Client).PullRequests.Merge(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), "", &github.PullRequestOptions{
-		MergeMethod: "squash",
+		MergeMethod: githubcommon.ToMergeMethod(mergeStrategy),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to merge merge request: %w", err)

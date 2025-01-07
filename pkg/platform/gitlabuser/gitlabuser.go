@@ -166,6 +166,15 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 }
 
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
+	if message != nil {
+		_, _, err := n.client.Notes.CreateMergeRequestNote(repo.Id, int(mergeRequest.Id), &gitlab.CreateMergeRequestNoteOptions{
+			Body: message,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create note: %w", err)
+		}
+	}
+
 	if approved {
 		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(repo.Id, int(mergeRequest.Id), &gitlab.ApproveMergeRequestOptions{})
 		if err != nil {
@@ -178,24 +187,13 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 		}
 	}
 
-	/*
-		if message != "" {
-			_, _, err := n.client.Notes.CreateMergeRequestNote(repo.Id, int(mergeRequest.Id), &gitlab.CreateMergeRequestNoteOptions{
-				Body: ptr.Ptr(message),
-			})
-			if err != nil {
-				return fmt.Errorf("failed to create note: %w", err)
-			}
-		}
-	*/
-
 	return nil
 }
 
-func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest) error {
+func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, mergeStrategy api.MergeStrategyOptions) error {
 	_, _, err := n.client.MergeRequests.AcceptMergeRequest(repo.Id, int(mergeRequest.Id), &gitlab.AcceptMergeRequestOptions{
-		Squash:                   ptr.True(),
-		ShouldRemoveSourceBranch: ptr.True(),
+		Squash:                   mergeStrategy.Squash,
+		ShouldRemoveSourceBranch: mergeStrategy.RemoveSourceBranch,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to resolve merge request: %w", err)

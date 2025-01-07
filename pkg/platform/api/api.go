@@ -22,7 +22,7 @@ type Platform interface {
 	// SubmitReview submits a review result / approval for a merge request
 	SubmitReview(repo Repository, mergeRequest MergeRequest, approved bool, message *string) error
 	// Merge merges a merge request
-	Merge(repo Repository, mergeRequest MergeRequest) error
+	Merge(repo Repository, mergeRequest MergeRequest, mergeStrategy MergeStrategyOptions) error
 	// Languages returns a map of used languages and their line count
 	Languages(repository Repository) (map[string]int, error)
 	// AuthMethod returns the authentication method used by the platform, required to push changes
@@ -125,6 +125,11 @@ type Release struct {
 	CommitHash string
 	// CreatedAt is the creation date of the release
 	CreatedAt *time.Time
+}
+
+type MergeStrategyOptions struct {
+	Squash             *bool
+	RemoveSourceBranch *bool
 }
 
 type RepositoryListOpts struct {
