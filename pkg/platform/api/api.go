@@ -19,6 +19,8 @@ type Platform interface {
 	FindRepository(name string) (Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
 	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
+	// MergeRequestDiff returns all changes of a merge request
+	MergeRequestDiff(repo Repository, mergeRequest MergeRequest) (MergeRequestDiff, error)
 	// SubmitReview submits a review result / approval for a merge request
 	SubmitReview(repo Repository, mergeRequest MergeRequest, approved bool, message *string) error
 	// Merge merges a merge request
@@ -95,6 +97,21 @@ type MergeRequest struct {
 	CanMerge bool
 	// Author is the author of the merge request
 	Author User
+}
+
+type MergeRequestDiff struct {
+	ChangedFiles []MergeRequestFileDiff
+}
+
+type MergeRequestFileDiff struct {
+	IsNew     bool
+	IsRenamed bool
+	IsDeleted bool
+	OldPath   string
+	NewPath   string
+	OldMode   string
+	NewMode   string
+	Diff      string
 }
 
 type MergeRequestSearchOptions struct {

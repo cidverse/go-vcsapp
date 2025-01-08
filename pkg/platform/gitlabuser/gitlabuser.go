@@ -165,6 +165,34 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	return result, nil
 }
 
+func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRequest) (api.MergeRequestDiff, error) {
+	result := api.MergeRequestDiff{
+		ChangedFiles: []api.MergeRequestFileDiff{},
+	}
+
+	diff, _, err := n.client.MergeRequests.ListMergeRequestDiffs(repo.Id, int(mergeRequest.Id), &gitlab.ListMergeRequestDiffsOptions{
+		Unidiff: ptr.True(),
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to get diff: %w", err)
+	}
+
+	for _, d := range diff {
+		result.ChangedFiles = append(result.ChangedFiles, api.MergeRequestFileDiff{
+			IsNew:     d.NewFile,
+			IsRenamed: d.RenamedFile,
+			IsDeleted: d.DeletedFile,
+			OldPath:   d.OldPath,
+			NewPath:   d.NewPath,
+			OldMode:   d.AMode,
+			NewMode:   d.BMode,
+			Diff:      d.Diff,
+		})
+	}
+
+	return result, nil
+}
+
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
 	if message != nil {
 		_, _, err := n.client.Notes.CreateMergeRequestNote(repo.Id, int(mergeRequest.Id), &gitlab.CreateMergeRequestNoteOptions{

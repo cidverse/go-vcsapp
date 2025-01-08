@@ -203,6 +203,32 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	return result, nil
 }
 
+func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRequest) (api.MergeRequestDiff, error) {
+	result := api.MergeRequestDiff{
+		ChangedFiles: []api.MergeRequestFileDiff{},
+	}
+
+	diff, _, err := repo.InternalClient.(*github.Client).PullRequests.ListFiles(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.ListOptions{})
+	if err != nil {
+		return result, fmt.Errorf("failed to get diff: %w", err)
+	}
+
+	for _, d := range diff {
+		result.ChangedFiles = append(result.ChangedFiles, api.MergeRequestFileDiff{
+			IsNew:     d.GetStatus() == "added",
+			IsRenamed: d.GetStatus() == "renamed",
+			IsDeleted: d.GetStatus() == "removed",
+			OldPath:   d.GetPreviousFilename(),
+			NewPath:   d.GetFilename(),
+			OldMode:   "",
+			NewMode:   "",
+			Diff:      d.GetPatch(),
+		})
+	}
+
+	return result, nil
+}
+
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
 	if approved {
 		_, _, err := repo.InternalClient.(*github.Client).PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
