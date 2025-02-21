@@ -3,7 +3,7 @@ module github.com/cidverse/go-vcsapp
 go 1.23.4
 
 require (
-	github.com/bradleyfalzon/ghinstallation/v2 v2.13.0
+	github.com/bradleyfalzon/ghinstallation/v2 v2.14.0
 	github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf
 	github.com/cidverse/go-vcs v0.0.0-20250102204915-24bfe6985828
 	github.com/go-git/go-git/v5 v5.13.2
@@ -26,7 +26,6 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/google/go-github/v68 v68.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
