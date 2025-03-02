@@ -114,7 +114,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 		searchState = "closed"
 	}
 
-	var mergeRequests []*gitlab.MergeRequest
+	var mergeRequests []*gitlab.BasicMergeRequest
 	opts := &gitlab.ListProjectMergeRequestsOptions{
 		SourceBranch:   ptr.Ptr(options.SourceBranch),
 		TargetBranch:   ptr.Ptr(options.TargetBranch),
@@ -148,16 +148,12 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			State:        toMergeRequestState(pr.State),
 			IsMerged:     pr.MergedAt != nil,
 			IsLocked:     pr.DiscussionLocked,
-			IsDraft:      pr.WorkInProgress,
+			IsDraft:      pr.Draft,
 			HasConflicts: pr.HasConflicts,
 			CanMerge:     pr.DetailedMergeStatus == "mergeable", // see https://docs.gitlab.com/ee/api/merge_requests.html#merge-status
 			Author:       toUser(pr.Author),
 		}
-		if pr.Pipeline != nil {
-			entry.PipelineState = toPipelineState(pr.Pipeline.Status)
-		} else {
-			entry.PipelineState = api.PipelineStateUnknown
-		}
+		entry.PipelineState = api.PipelineStateUnknown // list request does not provide pipeline status in Pipeline.Status
 
 		result = append(result, entry)
 	}
@@ -312,7 +308,7 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 	if err != nil {
 		return fmt.Errorf("failed to list merge requests: %w", err)
 	}
-	var existingMR *gitlab.MergeRequest
+	var existingMR *gitlab.BasicMergeRequest
 	for _, mr := range mrs {
 		existingMR = mr
 		break
