@@ -3,6 +3,7 @@ package vcsapp
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -19,6 +20,9 @@ var templateFuncMap = template.FuncMap{
 		default:
 			return false
 		}
+	},
+	"join": func(arr []string, sep string) string {
+		return strings.Join(arr, sep)
 	},
 	"removeIssueMentions": RemoveIssueMentionFromMessage,
 }
