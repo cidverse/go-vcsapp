@@ -5,7 +5,7 @@ go 1.23.4
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.14.0
 	github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf
-	github.com/cidverse/go-vcs v0.0.0-20250322081629-e413fe0cd7a4
+	github.com/cidverse/go-vcs v0.0.0-20250401201942-98fa0819aba6
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/google/go-github/v71 v71.0.0
 	github.com/rs/zerolog v1.34.0
@@ -39,10 +39,10 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/oauth2 v0.29.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -43,6 +43,10 @@ type Platform interface {
 	Releases(repository Repository, limit int) ([]Release, error)
 	// CreateTag creates a tag
 	CreateTag(repository Repository, tag string, commitHash string, message string) error
+	// Environments returns a list of all environments for a given repository
+	Environments(repo Repository) ([]CIEnvironment, error)
+	// EnvironmentVariables returns a list of all environment variables for a given repository and environment (omitting secret values)
+	EnvironmentVariables(repo Repository, environmentName string) ([]CIVariable, error)
 }
 
 type Repository struct {
@@ -169,4 +173,21 @@ type User struct {
 type GitAuthor struct {
 	Name  string `yaml:"name"`
 	Email string `yaml:"email"`
+}
+
+type CIEnvironment struct {
+	ID          int64      `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Tier        string     `json:"tier"` // e.g. "staging", "production"
+	CreatedAt   *time.Time // the creation date of the environment
+	UpdatedAt   *time.Time // the last update date of the environment
+}
+
+type CIVariable struct {
+	Name      string     `json:"name"`
+	Value     string     `json:"value"`
+	IsSecret  bool       `json:"isSecret"`
+	CreatedAt *time.Time // the creation date of the variable
+	UpdatedAt *time.Time // the last update date of the variable
 }

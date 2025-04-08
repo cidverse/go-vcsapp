@@ -428,6 +428,59 @@ func (n Platform) CreateTag(repository api.Repository, tag string, commitHash st
 	return nil
 }
 
+func (n Platform) Environments(repo api.Repository) ([]api.CIEnvironment, error) {
+	var result []api.CIEnvironment
+
+	environments, _, err := n.client.Environments.ListEnvironments(repo.Id, &gitlab.ListEnvironmentsOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: pageSize,
+		},
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to list environments: %w", err)
+	}
+
+	for _, v := range environments {
+		result = append(result, api.CIEnvironment{
+			ID:          int64(v.ID),
+			Name:        v.Name,
+			Description: v.Description,
+			Tier:        v.Tier,
+			CreatedAt:   v.CreatedAt,
+			UpdatedAt:   v.UpdatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+func (n Platform) EnvironmentVariables(repo api.Repository, environmentName string) ([]api.CIVariable, error) {
+	var result []api.CIVariable
+
+	variables, _, err := n.client.ProjectVariables.ListVariables(repo.Id, &gitlab.ListProjectVariablesOptions{
+		PerPage: pageSize,
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to list environment variables: %w", err)
+	}
+
+	for _, v := range variables {
+		if v.EnvironmentScope != environmentName {
+			continue
+		}
+
+		result = append(result, api.CIVariable{
+			Name:      v.Key,
+			Value:     v.Value,
+			IsSecret:  v.Protected || v.Masked || v.Hidden,
+			CreatedAt: nil,
+			UpdatedAt: nil,
+		})
+	}
+
+	return result, nil
+}
+
 // NewPlatform creates a GitLab platform
 func NewPlatform(config Config) (Platform, error) {
 	client, err := gitlab.NewClient(config.AccessToken, gitlab.WithBaseURL(config.Server+"/api/v4"))
