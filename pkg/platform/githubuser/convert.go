@@ -22,6 +22,7 @@ func convertRepository(repo *github.Repository) api.Repository {
 		CloneSSH:      repo.GetSSHURL(),
 		DefaultBranch: repo.GetDefaultBranch(),
 		IsFork:        repo.GetFork(),
+		IsEmpty:       false,
 		Topics:        repo.Topics,
 		CreatedAt:     repo.CreatedAt.GetTime(),
 		InternalRepo:  repo,

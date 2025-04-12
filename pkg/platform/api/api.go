@@ -62,6 +62,7 @@ type Repository struct {
 	CloneSSH       string            // the clone ssh url of the repository
 	DefaultBranch  string            // the default branch of the repository
 	IsFork         bool              // is this repository a fork
+	IsEmpty        bool              // is this repository empty (no commits)
 	Branches       []string          // list of all branches
 	Topics         []string          // list of all topics
 	LicenseName    string            // the name of the license

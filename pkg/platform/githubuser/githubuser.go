@@ -65,21 +65,29 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 		if opts.IncludeCommitHash {
 			commit, _, err := n.client.Repositories.GetCommit(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), "heads/"+repo.GetDefaultBranch(), &github.ListOptions{})
 			if err != nil {
-				return result, fmt.Errorf("failed to get commit: %w", err)
+				if !strings.Contains(err.Error(), "409 Git Repository is empty") {
+					return result, fmt.Errorf("failed to get commit: %w", err)
+				} else {
+					r.IsEmpty = true
+				}
+			} else {
+				r.CommitHash = commit.GetSHA()
+				r.CommitDate = commit.GetCommitter().CreatedAt.GetTime()
 			}
-
-			r.CommitHash = commit.GetSHA()
-			r.CommitDate = commit.GetCommitter().CreatedAt.GetTime()
 		}
 
 		// branches
 		if opts.IncludeBranches {
 			branchList, _, err := n.client.Repositories.ListBranches(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), &github.BranchListOptions{})
 			if err != nil {
-				return result, fmt.Errorf("failed to list branches: %w", err)
+				if !strings.Contains(err.Error(), "409 Git Repository is empty") {
+					return result, fmt.Errorf("failed to list branches: %w", err)
+				} else {
+					r.IsEmpty = true
+				}
+			} else {
+				r.Branches = githubcommon.BranchSliceToNameSlice(branchList)
 			}
-
-			r.Branches = githubcommon.BranchSliceToNameSlice(branchList)
 		}
 
 		result = append(result, r)

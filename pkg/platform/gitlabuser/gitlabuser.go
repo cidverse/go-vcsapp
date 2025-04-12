@@ -67,7 +67,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 		r := convertRepository(repo)
 
 		// commit
-		if opts.IncludeCommitHash {
+		if opts.IncludeCommitHash && !r.IsEmpty {
 			commit, _, err := n.client.Commits.GetCommit(repo.ID, repo.DefaultBranch, &gitlab.GetCommitOptions{})
 			if err != nil {
 				return result, fmt.Errorf("failed to get commit: %w", err)
@@ -78,7 +78,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 		}
 
 		// branches
-		if opts.IncludeBranches {
+		if opts.IncludeBranches && !r.IsEmpty {
 			branchList, _, err := n.client.Branches.ListBranches(repo.ID, &gitlab.ListBranchesOptions{})
 			if err != nil {
 				return result, fmt.Errorf("failed to list branches: %w", err)
