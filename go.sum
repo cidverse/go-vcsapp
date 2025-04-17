@@ -15,8 +15,8 @@ github.com/bradleyfalzon/ghinstallation/v2 v2.15.0 h1:7r2rPUM04rgszMP0U1UZ1M5VoV
 github.com/bradleyfalzon/ghinstallation/v2 v2.15.0/go.mod h1:PoH9Vhy82OeRFZfxsVrk3mfQhVkEzou9OOwPOsEhiXE=
 github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf h1:/DLETx+e0J8mWZyOOK8dAOMrdHUpJo8KQRuMt1IymtE=
 github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf/go.mod h1:nvQPqid2KB17xXiiFp/Fhd+dO5lusCSuBQtOXfsd+mk=
-github.com/cidverse/go-vcs v0.0.0-20250411133725-630d899b86cc h1:IMc67HSAH5k8dJ9iIn2NkpUgvNpXjKoflc99u7h2Xdk=
-github.com/cidverse/go-vcs v0.0.0-20250411133725-630d899b86cc/go.mod h1:Uh/ZtnY7mHrP5yHt8u8AzCGbby5ArWrgdbsv6mUb/9w=
+github.com/cidverse/go-vcs v0.0.0-20250416055844-4218094c633e h1:RAC/LJwTTbai9XnkC9ePxzOx9JARqPOf+yZ22vrGfHc=
+github.com/cidverse/go-vcs v0.0.0-20250416055844-4218094c633e/go.mod h1:wfsgDLjEigpXumFdC5gJ4lk0Le/r1bB6VRxzSrEI1e4=
 github.com/cloudflare/circl v1.6.1 h1:zqIqSPIndyBh1bjLVVDHMPpVKqp8Su/V+6MeDzzQBQ0=
 github.com/cloudflare/circl v1.6.1/go.mod h1:uddAzsPgqdMAYatqJ0lsjX1oECcQLIlRpzZh3pJrofs=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=

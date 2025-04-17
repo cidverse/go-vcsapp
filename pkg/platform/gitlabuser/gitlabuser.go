@@ -431,7 +431,7 @@ func (n Platform) CreateTag(repository api.Repository, tag string, commitHash st
 func (n Platform) Environments(repo api.Repository) ([]api.CIEnvironment, error) {
 	var result []api.CIEnvironment
 
-	environments, _, err := n.client.Environments.ListEnvironments(repo.Id, &gitlab.ListEnvironmentsOptions{
+	environments, _, err := n.client.Environments.ListEnvironments(int(repo.Id), &gitlab.ListEnvironmentsOptions{
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},
@@ -457,7 +457,7 @@ func (n Platform) Environments(repo api.Repository) ([]api.CIEnvironment, error)
 func (n Platform) EnvironmentVariables(repo api.Repository, environmentName string) ([]api.CIVariable, error) {
 	var result []api.CIVariable
 
-	variables, _, err := n.client.ProjectVariables.ListVariables(repo.Id, &gitlab.ListProjectVariablesOptions{
+	variables, _, err := n.client.ProjectVariables.ListVariables(int(repo.Id), &gitlab.ListProjectVariablesOptions{
 		PerPage: pageSize,
 	})
 	if err != nil {
