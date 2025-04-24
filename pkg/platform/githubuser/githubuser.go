@@ -72,7 +72,10 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 				}
 			} else {
 				r.CommitHash = commit.GetSHA()
-				r.CommitDate = commit.GetCommitter().CreatedAt.GetTime()
+				user := commit.GetCommitter()
+				if user != nil {
+					r.CommitDate = user.CreatedAt.GetTime()
+				}
 			}
 		}
 
