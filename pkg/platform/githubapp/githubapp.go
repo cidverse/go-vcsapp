@@ -583,7 +583,19 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 	var result []api.CIVariable
 	opts := github.ListOptions{PerPage: pageSize}
 
+	// env
 	var envVariables []*github.ActionsVariable
+	for {
+		data, resp, err := repo.InternalClient.(*github.Client).Actions.ListOrgVariables(context.Background(), repo.Namespace, &opts)
+		if err != nil {
+			return result, fmt.Errorf("failed to list environment variables: %w", err)
+		}
+		envVariables = append(envVariables, data.Variables...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
 	for {
 		data, resp, err := repo.InternalClient.(*github.Client).Actions.ListEnvVariables(context.Background(), repo.Namespace, repo.Name, environmentName, &opts)
 		if err != nil {
@@ -605,7 +617,19 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 		})
 	}
 
+	// secrets
 	var envSecrets []*github.Secret
+	for {
+		data, resp, err := repo.InternalClient.(*github.Client).Actions.ListOrgSecrets(context.Background(), repo.Namespace, &opts)
+		if err != nil {
+			return result, fmt.Errorf("failed to list merge requests: %w", err)
+		}
+		envSecrets = append(envSecrets, data.Secrets...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
 	for {
 		data, resp, err := repo.InternalClient.(*github.Client).Actions.ListEnvSecrets(context.Background(), int(repo.Id), environmentName, &opts)
 		if err != nil {
