@@ -428,6 +428,33 @@ func (n Platform) CreateTag(repository api.Repository, tag string, commitHash st
 	return nil
 }
 
+func (n Platform) Variables(repo api.Repository) ([]api.CIVariable, error) {
+	var result []api.CIVariable
+
+	variables, _, err := n.client.ProjectVariables.ListVariables(int(repo.Id), &gitlab.ListProjectVariablesOptions{
+		PerPage: pageSize,
+	})
+	if err != nil {
+		return result, fmt.Errorf("failed to list environment variables: %w", err)
+	}
+
+	for _, v := range variables {
+		if v.EnvironmentScope != "" {
+			continue
+		}
+
+		result = append(result, api.CIVariable{
+			Name:      v.Key,
+			Value:     v.Value,
+			IsSecret:  v.Protected || v.Masked || v.Hidden,
+			CreatedAt: nil,
+			UpdatedAt: nil,
+		})
+	}
+
+	return result, nil
+}
+
 func (n Platform) Environments(repo api.Repository) ([]api.CIEnvironment, error) {
 	var result []api.CIEnvironment
 

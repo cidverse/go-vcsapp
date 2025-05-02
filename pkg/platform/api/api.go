@@ -43,6 +43,8 @@ type Platform interface {
 	Releases(repository Repository, limit int) ([]Release, error)
 	// CreateTag creates a tag
 	CreateTag(repository Repository, tag string, commitHash string, message string) error
+	// Variables returns a list of all variables for a given repository (omitting secret values)
+	Variables(repo Repository) ([]CIVariable, error)
 	// Environments returns a list of all environments for a given repository
 	Environments(repo Repository) ([]CIEnvironment, error)
 	// EnvironmentVariables returns a list of all environment variables for a given repository and environment (omitting secret values)
@@ -65,6 +67,7 @@ type Repository struct {
 	IsEmpty        bool              // is this repository empty (no commits)
 	Branches       []string          // list of all branches
 	Topics         []string          // list of all topics
+	Plan           string            // the plan of the repository (e.g. free, pro, etc. - directly using the platform-specific plan name)
 	LicenseName    string            // the name of the license
 	LicenseURL     string            // the url of the license
 	CommitHash     string            // the commit hash of the latest commit on the default branch
@@ -157,6 +160,7 @@ type MergeStrategyOptions struct {
 type RepositoryListOpts struct {
 	IncludeBranches   bool
 	IncludeCommitHash bool
+	IncludePlan       bool
 }
 
 type User struct {
