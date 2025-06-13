@@ -152,6 +152,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			HasConflicts: pr.HasConflicts,
 			CanMerge:     pr.DetailedMergeStatus == "mergeable", // see https://docs.gitlab.com/ee/api/merge_requests.html#merge-status
 			Author:       toUser(pr.Author),
+			Repository:   repo,
 		}
 		entry.PipelineState = api.PipelineStateUnknown // list request does not provide pipeline status in Pipeline.Status
 

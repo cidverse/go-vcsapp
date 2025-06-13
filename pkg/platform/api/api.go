@@ -105,6 +105,8 @@ type MergeRequest struct {
 	CanMerge bool
 	// Author is the author of the merge request
 	Author User
+	// Repository is the repository of the merge request
+	Repository Repository
 }
 
 type MergeRequestDiff struct {

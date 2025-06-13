@@ -170,6 +170,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			HasConflicts: pr.GetMergeableState() == "dirty", // see https://docs.github.com/en/graphql/reference/enums#mergestatestatus
 			CanMerge:     pr.GetMergeable(),
 			Author:       githubcommon.ToStandardUser(pr.GetUser()),
+			Repository:   repo,
 		})
 	}
 
