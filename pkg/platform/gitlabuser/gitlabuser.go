@@ -127,7 +127,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 		},
 	}
 	for {
-		data, resp, err := n.client.MergeRequests.ListProjectMergeRequests(repo.Id, opts)
+		data, resp, err := n.client.MergeRequests.ListProjectMergeRequests(int(repo.Id), opts)
 		if err != nil {
 			return result, fmt.Errorf("failed to list merge requests: %w", err)
 		}
@@ -166,7 +166,7 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 		ChangedFiles: []api.MergeRequestFileDiff{},
 	}
 
-	diff, _, err := n.client.MergeRequests.ListMergeRequestDiffs(repo.Id, int(mergeRequest.Id), &gitlab.ListMergeRequestDiffsOptions{
+	diff, _, err := n.client.MergeRequests.ListMergeRequestDiffs(int(repo.Id), int(mergeRequest.Id), &gitlab.ListMergeRequestDiffsOptions{
 		Unidiff: ptr.True(),
 	})
 	if err != nil {
@@ -191,7 +191,7 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
 	if message != nil {
-		_, _, err := n.client.Notes.CreateMergeRequestNote(repo.Id, int(mergeRequest.Id), &gitlab.CreateMergeRequestNoteOptions{
+		_, _, err := n.client.Notes.CreateMergeRequestNote(int(repo.Id), int(mergeRequest.Id), &gitlab.CreateMergeRequestNoteOptions{
 			Body: message,
 		})
 		if err != nil {
@@ -200,12 +200,12 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 	}
 
 	if approved {
-		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(repo.Id, int(mergeRequest.Id), &gitlab.ApproveMergeRequestOptions{})
+		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(int(repo.Id), int(mergeRequest.Id), &gitlab.ApproveMergeRequestOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to approve merge request: %w", err)
 		}
 	} else {
-		_, err := n.client.MergeRequestApprovals.UnapproveMergeRequest(repo.Id, int(mergeRequest.Id))
+		_, err := n.client.MergeRequestApprovals.UnapproveMergeRequest(int(repo.Id), int(mergeRequest.Id))
 		if err != nil {
 			return fmt.Errorf("failed to unapprove merge request: %w", err)
 		}
@@ -215,7 +215,7 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 }
 
 func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, mergeStrategy api.MergeStrategyOptions) error {
-	_, _, err := n.client.MergeRequests.AcceptMergeRequest(repo.Id, int(mergeRequest.Id), &gitlab.AcceptMergeRequestOptions{
+	_, _, err := n.client.MergeRequests.AcceptMergeRequest(int(repo.Id), int(mergeRequest.Id), &gitlab.AcceptMergeRequestOptions{
 		Squash:                   mergeStrategy.Squash,
 		ShouldRemoveSourceBranch: mergeStrategy.RemoveSourceBranch,
 	})
@@ -229,7 +229,7 @@ func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, merg
 func (n Platform) Languages(repo api.Repository) (map[string]int, error) {
 	result := make(map[string]int)
 
-	languages, _, err := n.client.Projects.GetProjectLanguages(repo.Id, nil)
+	languages, _, err := n.client.Projects.GetProjectLanguages(int(repo.Id), nil)
 	if err != nil {
 		return result, fmt.Errorf("failed to get languages: %w", err)
 	}
