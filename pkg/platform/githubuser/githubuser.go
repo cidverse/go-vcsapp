@@ -159,6 +159,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 
 		result = append(result, api.MergeRequest{
 			Id:           pr.GetID(),
+			Number:       pr.GetNumber(),
 			Title:        pr.GetTitle(),
 			Description:  pr.GetBody(),
 			SourceBranch: pr.GetHead().GetRef(),

@@ -141,6 +141,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	for _, pr := range mergeRequests {
 		entry := api.MergeRequest{
 			Id:           int64(pr.ID),
+			Number:       pr.IID,
 			Title:        pr.Title,
 			Description:  pr.Description,
 			SourceBranch: pr.SourceBranch,
@@ -167,7 +168,7 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 		ChangedFiles: []api.MergeRequestFileDiff{},
 	}
 
-	diff, _, err := n.client.MergeRequests.ListMergeRequestDiffs(int(repo.Id), int(mergeRequest.Id), &gitlab.ListMergeRequestDiffsOptions{
+	diff, _, err := n.client.MergeRequests.ListMergeRequestDiffs(int(repo.Id), mergeRequest.Number, &gitlab.ListMergeRequestDiffsOptions{
 		Unidiff: ptr.True(),
 	})
 	if err != nil {

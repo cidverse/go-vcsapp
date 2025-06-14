@@ -81,6 +81,8 @@ type Repository struct {
 type MergeRequest struct {
 	// ID is the unique identifier of the merge request
 	Id int64
+	// Number is the project-specific number of the merge request (e.g. 42)
+	Number int
 	// Title is the title of the merge request
 	Title string
 	// Description is the description of the merge request
