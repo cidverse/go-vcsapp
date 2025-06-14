@@ -91,6 +91,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 				Id:             repo.GetID(),
 				Namespace:      repo.GetOwner().GetLogin(),
 				Name:           repo.GetName(),
+				Path:           repo.GetFullName(),
 				Description:    repo.GetDescription(),
 				Type:           "git",
 				URL:            strings.TrimPrefix(repo.GetHTMLURL(), "https://"),

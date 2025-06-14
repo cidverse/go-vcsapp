@@ -57,6 +57,7 @@ type Repository struct {
 	Id             int64             // the id of the repository
 	Namespace      string            // the namespace of the repository (e.g. organization or user)
 	Name           string            // the name of the repository
+	Path           string            // the path of the repository (e.g. organization/repo)
 	Description    string            // the description of the repository
 	Type           string            // repository type - valid values: git
 	URL            string            // the url of the repository

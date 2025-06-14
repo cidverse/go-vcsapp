@@ -14,6 +14,7 @@ func convertRepository(repo *gitlab.Project) api.Repository {
 		Id:            int64(repo.ID),
 		Namespace:     repo.Namespace.FullPath,
 		Name:          repo.Name,
+		Path:          repo.PathWithNamespace,
 		Description:   repo.Description,
 		Type:          "git",
 		URL:           strings.TrimPrefix(repo.WebURL, "https://"),
