@@ -144,6 +144,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			Number:       pr.IID,
 			Title:        pr.Title,
 			Description:  pr.Description,
+			Labels:       toMergeRequestLabels(pr.Labels),
 			SourceBranch: pr.SourceBranch,
 			TargetBranch: pr.TargetBranch,
 			State:        toMergeRequestState(pr.State),

@@ -201,6 +201,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 			Number:       pr.GetNumber(),
 			Title:        pr.GetTitle(),
 			Description:  pr.GetBody(),
+			Labels:       githubcommon.ToMergeRequestLabels(pr.Labels),
 			SourceBranch: pr.GetHead().GetRef(),
 			TargetBranch: pr.GetBase().GetRef(),
 			State:        githubcommon.ToStandardMergeRequestState(pr.GetState()),

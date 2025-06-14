@@ -22,6 +22,15 @@ func BranchSliceToNameSlice(branches []*github.Branch) []string {
 	return branchNames
 }
 
+func ToMergeRequestLabels(labels []*github.Label) []string {
+	var labelNames []string
+	for _, label := range labels {
+		labelNames = append(labelNames, label.GetName())
+	}
+
+	return labelNames
+}
+
 func ToStandardMergeRequestState(state string) api.MergeRequestState {
 	if state == "open" {
 		return api.MergeRequestStateOpen

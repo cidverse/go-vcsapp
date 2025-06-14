@@ -87,6 +87,8 @@ type MergeRequest struct {
 	Title string
 	// Description is the description of the merge request
 	Description string
+	// Labels is a list of labels assigned to the merge request
+	Labels []string
 	// SourceBranch is the source branch of the merge request
 	SourceBranch string
 	// TargetBranch is the target branch of the merge request

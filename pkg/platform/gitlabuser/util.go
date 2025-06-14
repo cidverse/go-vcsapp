@@ -18,6 +18,16 @@ func branchSliceToNameSlice(branches []*gitlab.Branch) []string {
 	return branchNames
 }
 
+func toMergeRequestLabels(labels gitlab.Labels) []string {
+	var result []string
+
+	for _, l := range labels {
+		result = append(result, l)
+	}
+
+	return result
+}
+
 func toMergeRequestState(state string) api.MergeRequestState {
 	if state == "opened" {
 		return api.MergeRequestStateOpen
