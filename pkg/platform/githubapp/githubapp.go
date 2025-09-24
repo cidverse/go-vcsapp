@@ -15,7 +15,7 @@ import (
 	"github.com/cidverse/go-vcsapp/pkg/platform/githubcommon"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/google/go-github/v74/github"
+	"github.com/google/go-github/v75/github"
 	"github.com/rs/zerolog/log"
 )
 
@@ -364,10 +364,10 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 	}
 
 	// commit tree
-	commit, _, err := client.Git.CreateCommit(context.Background(), repo.Namespace, repo.Name, &github.Commit{
-		Message: github.String(message),
+	commit, _, err := client.Git.CreateCommit(context.Background(), repo.Namespace, repo.Name, github.Commit{
+		Message: ptr.Ptr(message),
 		Tree:    tree,
-		Parents: []*github.Commit{{SHA: github.String(base)}},
+		Parents: []*github.Commit{{SHA: github.Ptr(base)}},
 	}, &github.CreateCommitOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create commit: %w", err)
@@ -376,18 +376,18 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 	// create or update remote reference
 	_, _, getRefErr := client.Git.GetRef(context.Background(), repo.Namespace, repo.Name, "refs/heads/"+branch)
 	if getRefErr != nil {
-		_, _, createRefErr := client.Git.CreateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
-			Ref:    github.String("refs/heads/" + branch),
-			Object: &github.GitObject{SHA: commit.SHA},
+		_, _, createRefErr := client.Git.CreateRef(context.Background(), repo.Namespace, repo.Name, github.CreateRef{
+			Ref: "refs/heads/" + branch,
+			SHA: commit.GetSHA(),
 		})
 		if createRefErr != nil {
 			return fmt.Errorf("failed to create remote branch reference: %w", createRefErr)
 		}
 	} else {
-		_, _, refErr := client.Git.UpdateRef(context.Background(), repo.Namespace, repo.Name, &github.Reference{
-			Ref:    github.String("refs/heads/" + branch),
-			Object: &github.GitObject{SHA: commit.SHA},
-		}, true)
+		_, _, refErr := client.Git.UpdateRef(context.Background(), repo.Namespace, repo.Name, "refs/heads/"+branch, github.UpdateRef{
+			SHA:   commit.GetSHA(),
+			Force: ptr.True(),
+		})
 		if refErr != nil {
 			return fmt.Errorf("failed to update reference: %w", refErr)
 		}
@@ -531,20 +531,20 @@ func (n Platform) CreateTag(repository api.Repository, tagName string, commitHas
 	client := repository.InternalClient.(*github.Client)
 
 	// create tag
-	tag, _, err := client.Git.CreateTag(context.Background(), repository.Namespace, repository.Name, &github.Tag{
-		Tag:     ptr.Ptr(tagName),
-		SHA:     ptr.Ptr(commitHash),
-		Message: ptr.Ptr(message),
-		Object:  &github.GitObject{Type: ptr.Ptr("commit"), SHA: ptr.Ptr(commitHash)},
+	tag, _, err := client.Git.CreateTag(context.Background(), repository.Namespace, repository.Name, github.CreateTag{
+		Tag:     tagName,
+		Message: message,
+		Object:  commitHash,
+		Type:    "commit",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create tag: %w", err)
 	}
 
 	// create ref
-	_, _, err = client.Git.CreateRef(context.Background(), repository.Namespace, repository.Name, &github.Reference{
-		Ref:    ptr.Ptr("refs/tags/" + tagName),
-		Object: tag.GetObject(),
+	_, _, err = client.Git.CreateRef(context.Background(), repository.Namespace, repository.Name, github.CreateRef{
+		Ref: "refs/tags/" + tagName,
+		SHA: tag.GetObject().GetSHA(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create tag reference: %w", err)
