@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
-	"github.com/google/go-github/v76/github"
+	"github.com/google/go-github/v77/github"
 )
 
 func Variables(repo api.Repository, githubClient *github.Client) ([]api.CIVariable, error) {
