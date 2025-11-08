@@ -7,7 +7,7 @@ require (
 	github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf
 	github.com/cidverse/go-vcs v0.0.0-20250827180914-98ba84f67766
 	github.com/go-git/go-git/v5 v5.16.3
-	github.com/google/go-github/v76 v76.0.0
+	github.com/google/go-github/v78 v78.0.0
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.11.1
 	gitlab.com/gitlab-org/api/client-go v0.158.0
