@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
-	"github.com/google/go-github/v78/github"
+	"github.com/google/go-github/v79/github"
 )
 
 func convertRepository(repo *github.Repository) api.Repository {
