@@ -87,6 +87,11 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 			r.Branches = branchSliceToNameSlice(branchList)
 		}
 
+		// plan
+		if opts.IncludePlan && !r.IsEmpty {
+			r.Plan = "free"
+		}
+
 		result = append(result, r)
 	}
 
@@ -120,7 +125,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 		TargetBranch:   ptr.Ptr(options.TargetBranch),
 		State:          ptr.Ptr(searchState),
 		Draft:          options.IsDraft,
-		AuthorID:       ptr.Int64ToInt(options.AuthorId),
+		AuthorID:       options.AuthorId,
 		AuthorUsername: options.AuthorUsername,
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
@@ -140,8 +145,8 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 
 	for _, pr := range mergeRequests {
 		entry := api.MergeRequest{
-			Id:           int64(pr.ID),
-			Number:       pr.IID,
+			Id:           pr.ID,
+			Number:       int(pr.IID),
 			Title:        pr.Title,
 			Description:  pr.Description,
 			Labels:       toMergeRequestLabels(pr.Labels),
@@ -169,7 +174,7 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 		ChangedFiles: []api.MergeRequestFileDiff{},
 	}
 
-	diff, _, err := n.client.MergeRequests.ListMergeRequestDiffs(int(repo.Id), mergeRequest.Number, &gitlab.ListMergeRequestDiffsOptions{
+	diff, _, err := n.client.MergeRequests.ListMergeRequestDiffs(int(repo.Id), int64(mergeRequest.Number), &gitlab.ListMergeRequestDiffsOptions{
 		Unidiff: ptr.True(),
 	})
 	if err != nil {
@@ -194,7 +199,7 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
 	if message != nil {
-		_, _, err := n.client.Notes.CreateMergeRequestNote(int(repo.Id), int(mergeRequest.Id), &gitlab.CreateMergeRequestNoteOptions{
+		_, _, err := n.client.Notes.CreateMergeRequestNote(int(repo.Id), mergeRequest.Id, &gitlab.CreateMergeRequestNoteOptions{
 			Body: message,
 		})
 		if err != nil {
@@ -203,12 +208,12 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 	}
 
 	if approved {
-		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(int(repo.Id), int(mergeRequest.Id), &gitlab.ApproveMergeRequestOptions{})
+		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(int(repo.Id), mergeRequest.Id, &gitlab.ApproveMergeRequestOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to approve merge request: %w", err)
 		}
 	} else {
-		_, err := n.client.MergeRequestApprovals.UnapproveMergeRequest(int(repo.Id), int(mergeRequest.Id))
+		_, err := n.client.MergeRequestApprovals.UnapproveMergeRequest(int(repo.Id), mergeRequest.Id)
 		if err != nil {
 			return fmt.Errorf("failed to unapprove merge request: %w", err)
 		}
@@ -218,7 +223,7 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 }
 
 func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, mergeStrategy api.MergeStrategyOptions) error {
-	_, _, err := n.client.MergeRequests.AcceptMergeRequest(int(repo.Id), int(mergeRequest.Id), &gitlab.AcceptMergeRequestOptions{
+	_, _, err := n.client.MergeRequests.AcceptMergeRequest(int(repo.Id), mergeRequest.Id, &gitlab.AcceptMergeRequestOptions{
 		Squash:                   mergeStrategy.Squash,
 		ShouldRemoveSourceBranch: mergeStrategy.RemoveSourceBranch,
 	})
@@ -377,7 +382,7 @@ func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) 
 
 	tagList, _, err := n.client.Tags.ListTags(int(repository.Id), &gitlab.ListTagsOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: limit,
+			PerPage: int64(limit),
 		},
 	})
 	if err != nil {
@@ -399,7 +404,7 @@ func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release,
 
 	releaseList, _, err := n.client.Releases.ListReleases(int(repository.Id), &gitlab.ListReleasesOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: limit,
+			PerPage: int64(limit),
 		},
 	})
 	if err != nil {
@@ -435,7 +440,9 @@ func (n Platform) Variables(repo api.Repository) ([]api.CIVariable, error) {
 	var result []api.CIVariable
 
 	variables, _, err := n.client.ProjectVariables.ListVariables(int(repo.Id), &gitlab.ListProjectVariablesOptions{
-		PerPage: pageSize,
+		ListOptions: gitlab.ListOptions{
+			PerPage: pageSize,
+		},
 	})
 	if err != nil {
 		return result, fmt.Errorf("failed to list environment variables: %w", err)
@@ -488,7 +495,9 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 	var result []api.CIVariable
 
 	variables, _, err := n.client.ProjectVariables.ListVariables(int(repo.Id), &gitlab.ListProjectVariablesOptions{
-		PerPage: pageSize,
+		ListOptions: gitlab.ListOptions{
+			PerPage: pageSize,
+		},
 	})
 	if err != nil {
 		return result, fmt.Errorf("failed to list environment variables: %w", err)
