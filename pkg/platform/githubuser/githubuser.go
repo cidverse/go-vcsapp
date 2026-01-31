@@ -12,7 +12,7 @@ import (
 	"github.com/cidverse/go-vcsapp/pkg/platform/githubcommon"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/google/go-github/v81/github"
+	"github.com/google/go-github/v82/github"
 	"github.com/rs/zerolog/log"
 )
 
@@ -431,12 +431,7 @@ func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) 
 	client := repository.InternalClient.(*github.Client)
 	var result []api.Tag
 
-	refs, _, err := client.Git.ListMatchingRefs(context.Background(), repository.Namespace, repository.Name, &github.ReferenceListOptions{
-		Ref: "tags/",
-		ListOptions: github.ListOptions{
-			PerPage: limit,
-		},
-	})
+	refs, _, err := client.Git.ListMatchingRefs(context.Background(), repository.Namespace, repository.Name, "tags/")
 	if err != nil {
 		return result, fmt.Errorf("failed to list tags: %w", err)
 	}
