@@ -479,12 +479,7 @@ func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) 
 	client := repository.InternalClient.(*github.Client)
 	var result []api.Tag
 
-	refs, _, err := client.Git.ListMatchingRefs(context.Background(), repository.Namespace, repository.Name, &github.ReferenceListOptions{
-		Ref: "tags/",
-		ListOptions: github.ListOptions{
-			PerPage: limit,
-		},
-	})
+	refs, _, err := client.Git.ListMatchingRefs(context.Background(), repository.Namespace, repository.Name, "tags/")
 	if err != nil {
 		return result, fmt.Errorf("failed to list tags: %w", err)
 	}
