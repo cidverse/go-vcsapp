@@ -3,20 +3,43 @@ package vcsapp
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"strings"
 	"text/template"
 )
 
 var templateFuncMap = template.FuncMap{
 	"contains": func(container interface{}, elem interface{}) bool {
-		switch c := container.(type) {
-		case []string:
-			for _, v := range c {
-				if v == elem.(string) {
+		v := reflect.ValueOf(container)
+
+		var query string
+		e := reflect.ValueOf(elem)
+		if e.Kind() == reflect.String {
+			query = e.String()
+		} else {
+			query = fmt.Sprintf("%v", elem)
+		}
+
+		switch v.Kind() {
+		case reflect.String:
+			return strings.Contains(v.String(), query)
+		case reflect.Slice, reflect.Array:
+			for i := 0; i < v.Len(); i++ {
+				item := v.Index(i)
+
+				var itemStr string
+				if item.Kind() == reflect.String {
+					itemStr = item.String()
+				} else {
+					itemStr = fmt.Sprintf("%v", item.Interface())
+				}
+
+				if itemStr == query {
 					return true
 				}
 			}
 			return false
+
 		default:
 			return false
 		}
