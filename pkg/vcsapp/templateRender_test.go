@@ -23,11 +23,9 @@ const (
 
 func TestRenderContains(t *testing.T) {
 	data := map[string]interface{}{
-		"Statuses": []DummyStatus{
+		"statusList": []DummyStatus{
 			StatusActive,
-			DummyStatus("pending"),
 		},
-		"Search": "active",
 	}
 
 	tests := []struct {
@@ -37,7 +35,7 @@ func TestRenderContains(t *testing.T) {
 	}{
 		{
 			name:     "Enum in slice found",
-			template: `{{ if contains .Statuses "active" }}TRUE{{ else }}FALSE{{ end }}`,
+			template: `{{ if contains .statusList "active" }}TRUE{{ else }}FALSE{{ end }}`,
 			expected: "TRUE",
 		},
 	}
