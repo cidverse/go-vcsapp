@@ -8,7 +8,7 @@ require (
 	github.com/cidverse/go-vcs v0.0.0-20260331215627-210979a80271
 	github.com/go-git/go-git/v5 v5.18.0
 	github.com/google/go-github/v85 v85.0.0
-	github.com/rs/zerolog v1.35.0
+	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
 	gitlab.com/gitlab-org/api/client-go/v2 v2.20.1
 )
