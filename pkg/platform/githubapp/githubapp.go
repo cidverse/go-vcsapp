@@ -34,6 +34,19 @@ type Config struct {
 	PrivateKey string `yaml:"privateKey"`
 }
 
+func githubClientFromRepository(repo api.Repository) (*github.Client, error) {
+	if repo.InternalClient == nil {
+		return nil, fmt.Errorf("missing internal github client for repository: %s", repo.Path)
+	}
+
+	client, ok := repo.InternalClient.(*github.Client)
+	if !ok {
+		return nil, fmt.Errorf("invalid internal github client type %T for repository: %s", repo.InternalClient, repo.Path)
+	}
+
+	return client, nil
+}
+
 func (n Platform) Name() string {
 	return "GitHub"
 }
@@ -156,6 +169,10 @@ func (n Platform) FindRepository(path string) (api.Repository, error) {
 
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
 	var result []api.MergeRequest
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return result, err
+	}
 
 	searchState := "all"
 	if options.State != nil && *options.State == api.MergeRequestStateOpen {
@@ -167,7 +184,7 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	var pullRequests []*github.PullRequest
 	opts := github.ListOptions{PerPage: pageSize}
 	for {
-		data, resp, err := repo.InternalClient.(*github.Client).PullRequests.List(context.Background(), repo.Namespace, repo.Name, &github.PullRequestListOptions{
+		data, resp, err := client.PullRequests.List(context.Background(), repo.Namespace, repo.Name, &github.PullRequestListOptions{
 			Head:        options.SourceBranch,
 			Base:        options.TargetBranch,
 			State:       searchState,
@@ -223,8 +240,12 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 	result := api.MergeRequestDiff{
 		ChangedFiles: []api.MergeRequestFileDiff{},
 	}
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return result, err
+	}
 
-	diff, _, err := repo.InternalClient.(*github.Client).PullRequests.ListFiles(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.ListOptions{})
+	diff, _, err := client.PullRequests.ListFiles(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.ListOptions{})
 	if err != nil {
 		return result, fmt.Errorf("failed to get diff: %w", err)
 	}
@@ -246,8 +267,13 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 }
 
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return err
+	}
+
 	if approved {
-		_, _, err := repo.InternalClient.(*github.Client).PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
+		_, _, err := client.PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
 			Event: ptr.Ptr("APPROVE"),
 			Body:  message,
 		})
@@ -255,7 +281,7 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 			return fmt.Errorf("failed to approve merge request: %w", err)
 		}
 	} else {
-		_, _, err := repo.InternalClient.(*github.Client).PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
+		_, _, err := client.PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
 			Event: ptr.Ptr("REQUEST_CHANGES"),
 			Body:  message,
 		})
@@ -268,7 +294,12 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 }
 
 func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, mergeStrategy api.MergeStrategyOptions) error {
-	_, _, err := repo.InternalClient.(*github.Client).PullRequests.Merge(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), "", &github.PullRequestOptions{
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.PullRequests.Merge(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), "", &github.PullRequestOptions{
 		MergeMethod: githubcommon.ToMergeMethod(mergeStrategy),
 	})
 	if err != nil {
@@ -279,7 +310,12 @@ func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, merg
 }
 
 func (n Platform) Languages(repo api.Repository) (map[string]int, error) {
-	data, _, err := repo.InternalClient.(*github.Client).Repositories.ListLanguages(context.Background(), repo.Namespace, repo.Name)
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	data, _, err := client.Repositories.ListLanguages(context.Background(), repo.Namespace, repo.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list languages: %w", err)
 	}
@@ -300,7 +336,10 @@ func (n Platform) AuthMethod(repo api.Repository) githttp.AuthMethod {
 }
 
 func (n Platform) CommitAndPush(repo api.Repository, base string, branch string, message string, dir string) error {
-	client := repo.InternalClient.(*github.Client)
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return err
+	}
 
 	// prepare tree
 	var entries []*github.TreeEntry
@@ -397,7 +436,12 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 }
 
 func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch string, title string, description string) error {
-	_, _, err := repository.InternalClient.(*github.Client).PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
 		Base:  ptr.Ptr(repository.DefaultBranch),
 		Head:  ptr.Ptr(sourceBranch),
 		Title: ptr.Ptr(title),
@@ -411,7 +455,10 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 }
 
 func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBranch string, title string, description string, key string) error {
-	client := repository.InternalClient.(*github.Client)
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return err
+	}
 	description = fmt.Sprintf("%s\n\n<!--vcs-merge-request-key:%s-->", description, key)
 
 	// search merge request
@@ -462,7 +509,10 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 }
 
 func (n Platform) FileContent(repository api.Repository, branch string, path string) (string, error) {
-	client := repository.InternalClient.(*github.Client)
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return "", err
+	}
 
 	// get file content
 	fileContent, _, _, err := client.Repositories.GetContents(context.Background(), repository.Namespace, repository.Name, path, &github.RepositoryContentGetOptions{
@@ -476,8 +526,11 @@ func (n Platform) FileContent(repository api.Repository, branch string, path str
 }
 
 func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) {
-	client := repository.InternalClient.(*github.Client)
 	var result []api.Tag
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return result, err
+	}
 
 	refs, _, err := client.Git.ListMatchingRefs(context.Background(), repository.Namespace, repository.Name, "tags/")
 	if err != nil {
@@ -495,8 +548,11 @@ func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) 
 }
 
 func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release, error) {
-	client := repository.InternalClient.(*github.Client)
 	var result []api.Release
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return result, err
+	}
 
 	releaseList, _, err := client.Repositories.ListReleases(context.Background(), repository.Namespace, repository.Name, &github.ListOptions{
 		PerPage: limit,
@@ -523,7 +579,10 @@ func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release,
 }
 
 func (n Platform) CreateTag(repository api.Repository, tagName string, commitHash string, message string) error {
-	client := repository.InternalClient.(*github.Client)
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return err
+	}
 
 	// create tag
 	tag, _, err := client.Git.CreateTag(context.Background(), repository.Namespace, repository.Name, github.CreateTag{
@@ -549,21 +608,35 @@ func (n Platform) CreateTag(repository api.Repository, tagName string, commitHas
 }
 
 func (n Platform) Variables(repo api.Repository) ([]api.CIVariable, error) {
-	return githubcommon.Variables(repo, repo.InternalClient.(*github.Client))
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	return githubcommon.Variables(repo, client)
 }
 
 func (n Platform) Environments(repo api.Repository) ([]api.CIEnvironment, error) {
-	return githubcommon.Environments(repo, repo.InternalClient.(*github.Client))
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return nil, err
+	}
+
+	return githubcommon.Environments(repo, client)
 }
 
 func (n Platform) EnvironmentVariables(repo api.Repository, environmentName string) ([]api.CIVariable, error) {
 	var result []api.CIVariable
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return result, err
+	}
 
 	// env
 	var envVariables []*github.ActionsVariable
 	opts := github.ListOptions{PerPage: pageSize}
 	for {
-		data, resp, err := repo.InternalClient.(*github.Client).Actions.ListEnvVariables(context.Background(), repo.Namespace, repo.Name, environmentName, &opts)
+		data, resp, err := client.Actions.ListEnvVariables(context.Background(), repo.Namespace, repo.Name, environmentName, &opts)
 		if err != nil {
 			return result, fmt.Errorf("failed to list environment variables: %w", err)
 		}
@@ -587,9 +660,9 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 	var envSecrets []*github.Secret
 	opts = github.ListOptions{PerPage: pageSize}
 	for {
-		data, resp, err := repo.InternalClient.(*github.Client).Actions.ListEnvSecrets(context.Background(), int(repo.Id), environmentName, &opts)
+		data, resp, err := client.Actions.ListEnvSecrets(context.Background(), int(repo.Id), environmentName, &opts)
 		if err != nil {
-			return result, fmt.Errorf("failed to list merge requests: %w", err)
+			return result, fmt.Errorf("failed to list environment secrets: %w", err)
 		}
 		envSecrets = append(envSecrets, data.Secrets...)
 		if resp.NextPage == 0 {

@@ -29,6 +29,19 @@ type Config struct {
 	AccessToken string `yaml:"token"`
 }
 
+func githubClientFromRepository(repo api.Repository) (*github.Client, error) {
+	if repo.InternalClient == nil {
+		return nil, fmt.Errorf("missing internal github client for repository: %s", repo.Path)
+	}
+
+	client, ok := repo.InternalClient.(*github.Client)
+	if !ok {
+		return nil, fmt.Errorf("invalid internal github client type %T for repository: %s", repo.InternalClient, repo.Path)
+	}
+
+	return client, nil
+}
+
 func (n Platform) Name() string {
 	return "GitHub"
 }
@@ -59,7 +72,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 
 	// convert repositories
 	for _, repo := range repositories {
-		r := convertRepository(repo)
+		r := convertRepository(repo, n.client)
 
 		// commit
 		if opts.IncludeCommitHash {
@@ -110,7 +123,7 @@ func (n Platform) FindRepository(path string) (api.Repository, error) {
 		return api.Repository{}, fmt.Errorf("failed to get repository: %w", err)
 	}
 
-	return convertRepository(repo), nil
+	return convertRepository(repo, n.client), nil
 }
 
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
@@ -350,7 +363,12 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 }
 
 func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch string, title string, description string) error {
-	_, _, err := repository.InternalClient.(*github.Client).PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
 		Base:  ptr.Ptr(repository.DefaultBranch),
 		Head:  ptr.Ptr(sourceBranch),
 		Title: ptr.Ptr(title),
@@ -414,7 +432,10 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 }
 
 func (n Platform) FileContent(repository api.Repository, branch string, path string) (string, error) {
-	client := repository.InternalClient.(*github.Client)
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return "", err
+	}
 
 	// get file content
 	fileContent, _, _, err := client.Repositories.GetContents(context.Background(), repository.Namespace, repository.Name, path, &github.RepositoryContentGetOptions{
@@ -428,8 +449,11 @@ func (n Platform) FileContent(repository api.Repository, branch string, path str
 }
 
 func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) {
-	client := repository.InternalClient.(*github.Client)
 	var result []api.Tag
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return result, err
+	}
 
 	refs, _, err := client.Git.ListMatchingRefs(context.Background(), repository.Namespace, repository.Name, "tags/")
 	if err != nil {
@@ -447,8 +471,11 @@ func (n Platform) Tags(repository api.Repository, limit int) ([]api.Tag, error) 
 }
 
 func (n Platform) Releases(repository api.Repository, limit int) ([]api.Release, error) {
-	client := repository.InternalClient.(*github.Client)
 	var result []api.Release
+	client, err := githubClientFromRepository(repository)
+	if err != nil {
+		return result, err
+	}
 
 	releaseList, _, err := client.Repositories.ListReleases(context.Background(), repository.Namespace, repository.Name, &github.ListOptions{
 		PerPage: limit,

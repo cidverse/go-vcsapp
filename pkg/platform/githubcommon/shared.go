@@ -3,6 +3,7 @@ package githubcommon
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/google/go-github/v86/github"
@@ -11,20 +12,29 @@ import (
 func Variables(repo api.Repository, githubClient *github.Client) ([]api.CIVariable, error) {
 	var result []api.CIVariable
 
+	isOrganizationOwner := false
+	if internalRepo, ok := repo.InternalRepo.(*github.Repository); ok {
+		isOrganizationOwner = strings.EqualFold(internalRepo.GetOwner().GetType(), "organization")
+	}
+
 	// env
 	var envVariables []*github.ActionsVariable
+
 	opts := github.ListOptions{PerPage: PageSize}
-	for {
-		data, resp, err := githubClient.Actions.ListOrgVariables(context.Background(), repo.Namespace, &opts)
-		if err != nil {
-			return result, fmt.Errorf("failed to list environment variables: %w", err)
+	if isOrganizationOwner {
+		for {
+			data, resp, err := githubClient.Actions.ListOrgVariables(context.Background(), repo.Namespace, &opts)
+			if err != nil {
+				return result, fmt.Errorf("failed to list environment variables: %w", err)
+			}
+			envVariables = append(envVariables, data.Variables...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opts.Page = resp.NextPage
 		}
-		envVariables = append(envVariables, data.Variables...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opts.Page = resp.NextPage
 	}
+
 	opts = github.ListOptions{PerPage: PageSize}
 	for {
 		data, resp, err := githubClient.Actions.ListRepoVariables(context.Background(), repo.Namespace, repo.Name, &opts)
@@ -49,22 +59,24 @@ func Variables(repo api.Repository, githubClient *github.Client) ([]api.CIVariab
 
 	// secrets
 	var envSecrets []*github.Secret
-	for {
-		data, resp, err := githubClient.Actions.ListOrgSecrets(context.Background(), repo.Namespace, &opts)
-		if err != nil {
-			return result, fmt.Errorf("failed to list merge requests: %w", err)
+	if isOrganizationOwner {
+		for {
+			data, resp, err := githubClient.Actions.ListOrgSecrets(context.Background(), repo.Namespace, &opts)
+			if err != nil {
+				return result, fmt.Errorf("failed to list organization secrets: %w", err)
+			}
+			envSecrets = append(envSecrets, data.Secrets...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opts.Page = resp.NextPage
 		}
-		envSecrets = append(envSecrets, data.Secrets...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opts.Page = resp.NextPage
 	}
 	opts = github.ListOptions{PerPage: PageSize}
 	for {
 		data, resp, err := githubClient.Actions.ListRepoSecrets(context.Background(), repo.Namespace, repo.Name, &opts)
 		if err != nil {
-			return result, fmt.Errorf("failed to list merge requests: %w", err)
+			return result, fmt.Errorf("failed to list repository secrets: %w", err)
 		}
 		envSecrets = append(envSecrets, data.Secrets...)
 		if resp.NextPage == 0 {

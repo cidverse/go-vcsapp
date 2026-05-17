@@ -8,25 +8,26 @@ import (
 	"github.com/google/go-github/v86/github"
 )
 
-func convertRepository(repo *github.Repository) api.Repository {
+func convertRepository(repo *github.Repository, client *github.Client) api.Repository {
 	r := api.Repository{
-		PlatformId:    api.GetServerIdFromCloneURL(repo.GetCloneURL()),
-		PlatformType:  "github",
-		Id:            repo.GetID(),
-		Namespace:     repo.GetOwner().GetLogin(),
-		Name:          repo.GetName(),
-		Path:          repo.GetFullName(),
-		Description:   repo.GetDescription(),
-		Type:          "git",
-		URL:           strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
-		CloneURL:      repo.GetCloneURL(),
-		CloneSSH:      repo.GetSSHURL(),
-		DefaultBranch: repo.GetDefaultBranch(),
-		IsFork:        repo.GetFork(),
-		IsEmpty:       false,
-		Topics:        repo.Topics,
-		CreatedAt:     repo.CreatedAt.GetTime(),
-		InternalRepo:  repo,
+		PlatformId:     api.GetServerIdFromCloneURL(repo.GetCloneURL()),
+		PlatformType:   "github",
+		Id:             repo.GetID(),
+		Namespace:      repo.GetOwner().GetLogin(),
+		Name:           repo.GetName(),
+		Path:           repo.GetFullName(),
+		Description:    repo.GetDescription(),
+		Type:           "git",
+		URL:            strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
+		CloneURL:       repo.GetCloneURL(),
+		CloneSSH:       repo.GetSSHURL(),
+		DefaultBranch:  repo.GetDefaultBranch(),
+		IsFork:         repo.GetFork(),
+		IsEmpty:        false,
+		Topics:         repo.Topics,
+		CreatedAt:      repo.CreatedAt.GetTime(),
+		InternalClient: client,
+		InternalRepo:   repo,
 	}
 	if repo.GetLicense() != nil {
 		r.LicenseName = repo.GetLicense().GetName()
