@@ -52,31 +52,32 @@ type Platform interface {
 }
 
 type Repository struct {
-	PlatformId     string            // the platform id
-	PlatformType   string            // the platform type
-	Id             int64             // the id of the repository
-	Namespace      string            // the namespace of the repository (e.g. organization or user)
-	Name           string            // the name of the repository
-	Path           string            // the path of the repository (e.g. organization/repo)
-	Description    string            // the description of the repository
-	Type           string            // repository type - valid values: git
-	URL            string            // the url of the repository
-	CloneURL       string            // the clone url of the repository
-	CloneSSH       string            // the clone ssh url of the repository
-	DefaultBranch  string            // the default branch of the repository
-	IsFork         bool              // is this repository a fork
-	IsEmpty        bool              // is this repository empty (no commits)
-	Branches       []string          // list of all branches
-	Topics         []string          // list of all topics
-	Plan           string            // the plan of the repository (e.g. free, pro, etc. - directly using the platform-specific plan name)
-	LicenseName    string            // the name of the license
-	LicenseURL     string            // the url of the license
-	CommitHash     string            // the commit hash of the latest commit on the default branch
-	CommitDate     *time.Time        // the commit date of the latest commit on the default branch
-	CreatedAt      *time.Time        // the creation date of the repository
-	RoundTripper   http.RoundTripper `json:"-" yaml:"-"` // this is a platform specific round tripper for the repository (GitHub apps require an org-scoped round tripper)
-	InternalClient interface{}       `json:"-" yaml:"-"` // this is a platform specific client for the repository (GitHub apps require an org-scoped client)
-	InternalRepo   interface{}       `json:"-" yaml:"-"` // this is the original repository object from the platform
+	PlatformId        string            // the platform id
+	PlatformType      string            // the platform type
+	Id                int64             // the id of the repository
+	Namespace         string            // the namespace of the repository (e.g. organization or user)
+	Name              string            // the name of the repository
+	Path              string            // the path of the repository (e.g. organization/repo)
+	Description       string            // the description of the repository
+	Type              string            // repository type - valid values: git
+	URL               string            // the url of the repository
+	CloneURL          string            // the clone url of the repository
+	CloneSSH          string            // the clone ssh url of the repository
+	DefaultBranch     string            // the default branch of the repository
+	IsFork            bool              // is this repository a fork
+	IsEmpty           bool              // is this repository empty (no commits)
+	IsPersonalProject bool              // true if repository owner is a personal user account
+	Branches          []string          // list of all branches
+	Topics            []string          // list of all topics
+	Plan              string            // the plan of the repository (e.g. free, pro, etc. - directly using the platform-specific plan name)
+	LicenseName       string            // the name of the license
+	LicenseURL        string            // the url of the license
+	CommitHash        string            // the commit hash of the latest commit on the default branch
+	CommitDate        *time.Time        // the commit date of the latest commit on the default branch
+	CreatedAt         *time.Time        // the creation date of the repository
+	RoundTripper      http.RoundTripper `json:"-" yaml:"-"` // this is a platform specific round tripper for the repository (GitHub apps require an org-scoped round tripper)
+	InternalClient    interface{}       `json:"-" yaml:"-"` // this is a platform specific client for the repository (GitHub apps require an org-scoped client)
+	InternalRepo      interface{}       `json:"-" yaml:"-"` // this is the original repository object from the platform
 }
 
 type MergeRequest struct {

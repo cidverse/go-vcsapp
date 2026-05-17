@@ -3,7 +3,6 @@ package githubcommon
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/google/go-github/v86/github"
@@ -12,16 +11,13 @@ import (
 func Variables(repo api.Repository, githubClient *github.Client) ([]api.CIVariable, error) {
 	var result []api.CIVariable
 
-	isOrganizationOwner := false
-	if internalRepo, ok := repo.InternalRepo.(*github.Repository); ok {
-		isOrganizationOwner = strings.EqualFold(internalRepo.GetOwner().GetType(), "organization")
-	}
+	shouldCallOrgAPIs := !repo.IsPersonalProject
 
 	// env
 	var envVariables []*github.ActionsVariable
 
 	opts := github.ListOptions{PerPage: PageSize}
-	if isOrganizationOwner {
+	if shouldCallOrgAPIs {
 		for {
 			data, resp, err := githubClient.Actions.ListOrgVariables(context.Background(), repo.Namespace, &opts)
 			if err != nil {
@@ -59,7 +55,7 @@ func Variables(repo api.Repository, githubClient *github.Client) ([]api.CIVariab
 
 	// secrets
 	var envSecrets []*github.Secret
-	if isOrganizationOwner {
+	if shouldCallOrgAPIs {
 		for {
 			data, resp, err := githubClient.Actions.ListOrgSecrets(context.Background(), repo.Namespace, &opts)
 			if err != nil {
