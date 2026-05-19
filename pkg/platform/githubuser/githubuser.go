@@ -589,10 +589,15 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 
 // NewPlatform creates a GitHub platform
 func NewPlatform(config Config) (Platform, error) {
+	client, err := github.NewClient(github.WithAuthToken(config.AccessToken))
+	if err != nil {
+		return Platform{}, fmt.Errorf("failed to create github client: %w", err)
+	}
+
 	platform := Platform{
 		username:    config.Username,
 		accessToken: config.AccessToken,
-		client:      github.NewClient(nil).WithAuthToken(config.AccessToken),
+		client:      client,
 	}
 
 	return platform, nil

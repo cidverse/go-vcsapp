@@ -79,7 +79,10 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 		if err != nil {
 			return result, fmt.Errorf("failed to create installation transport: %w", err)
 		}
-		orgClient := github.NewClient(&http.Client{Transport: itr})
+		orgClient, err := github.NewClient(github.WithTransport(itr))
+		if err != nil {
+			return result, fmt.Errorf("failed to create github client: %w", err)
+		}
 
 		// query repositories
 		var repositories []*github.Repository
@@ -688,13 +691,18 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 func NewPlatform(config Config) (Platform, error) {
 	tr, err := ghinstallation.NewAppsTransport(sharedTransport, config.AppId, []byte(config.PrivateKey))
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create installation transport")
+		return Platform{}, fmt.Errorf("failed to create transport: %w", err)
+	}
+
+	client, err := github.NewClient(github.WithTransport(tr))
+	if err != nil {
+		return Platform{}, fmt.Errorf("failed to create github client: %w", err)
 	}
 
 	platform := Platform{
 		appId:      config.AppId,
 		privateKey: config.PrivateKey,
-		client:     github.NewClient(&http.Client{Transport: tr}),
+		client:     client,
 	}
 
 	return platform, nil
