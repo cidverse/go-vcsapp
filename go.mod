@@ -5,12 +5,12 @@ go 1.25.0
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.18.0
 	github.com/cidverse/go-ptr v0.0.0-20240331160646-489e694bebbf
-	github.com/cidverse/go-vcs v0.0.0-20260506191116-975ebe32b349
+	github.com/cidverse/go-vcs v0.0.0-20260519220358-81ec25a7ed93
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/google/go-github/v88 v88.0.0
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
-	gitlab.com/gitlab-org/api/client-go/v2 v2.35.0
+	gitlab.com/gitlab-org/api/client-go/v2 v2.36.0
 )
 
 require (
@@ -40,10 +40,10 @@ require (
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

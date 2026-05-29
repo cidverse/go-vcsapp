@@ -260,7 +260,9 @@ func (n Platform) CommitAndPush(repo api.Repository, base string, branch string,
 	}
 
 	// track files and create commit
-	err = w.AddGlob("*")
+	err = w.AddWithOptions(&git.AddOptions{
+		All: true,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to add files: %w", err)
 	}
