@@ -15,7 +15,7 @@ import (
 	"github.com/cidverse/go-vcsapp/pkg/platform/githubcommon"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/google/go-github/v88/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/rs/zerolog/log"
 )
 
@@ -664,7 +664,7 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 	var envSecrets []*github.Secret
 	opts = github.ListOptions{PerPage: pageSize}
 	for {
-		data, resp, err := client.Actions.ListEnvSecrets(context.Background(), int(repo.Id), environmentName, &opts)
+		data, resp, err := client.Actions.ListEnvSecrets(context.Background(), repo.Namespace, repo.Name, environmentName, &opts)
 		if err != nil {
 			return result, fmt.Errorf("failed to list environment secrets: %w", err)
 		}
