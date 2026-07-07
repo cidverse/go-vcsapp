@@ -564,7 +564,7 @@ func (n Platform) EnvironmentVariables(repo api.Repository, environmentName stri
 	var envSecrets []*github.Secret
 	opts = github.ListOptions{PerPage: pageSize}
 	for {
-		data, resp, err := n.client.Actions.ListEnvSecrets(context.Background(), int(repo.Id), environmentName, &opts)
+		data, resp, err := n.client.Actions.ListEnvSecrets(context.Background(), repo.Namespace, repo.Name, environmentName, &opts)
 		if err != nil {
 			return result, fmt.Errorf("failed to list merge requests: %w", err)
 		}
