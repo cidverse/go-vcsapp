@@ -15,7 +15,7 @@ import (
 	"github.com/cidverse/go-vcsapp/pkg/platform/githubcommon"
 	"github.com/go-git/go-git/v5"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	"github.com/google/go-github/v89/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/rs/zerolog/log"
 )
 
@@ -445,9 +445,9 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 		return err
 	}
 
-	_, _, err = client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
-		Base:  ptr.Ptr(repository.DefaultBranch),
-		Head:  ptr.Ptr(sourceBranch),
+	_, _, err = client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, github.CreatePullRequest{
+		Base:  repository.DefaultBranch,
+		Head:  sourceBranch,
 		Title: ptr.Ptr(title),
 		Body:  ptr.Ptr(description),
 	})
@@ -498,9 +498,9 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 		}
 	} else {
 		log.Debug().Str("source_branch", sourceBranch).Str("target_branch", repository.DefaultBranch).Str("title", title).Msg("no existing pull request found, creating")
-		_, _, createErr := client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
-			Base:  ptr.Ptr(repository.DefaultBranch),
-			Head:  ptr.Ptr(sourceBranch),
+		_, _, createErr := client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, github.CreatePullRequest{
+			Base:  repository.DefaultBranch,
+			Head:  sourceBranch,
 			Title: ptr.Ptr(title),
 			Body:  ptr.Ptr(description),
 		})
