@@ -368,9 +368,9 @@ func (n Platform) CreateMergeRequest(repository api.Repository, sourceBranch str
 		return err
 	}
 
-	_, _, err = client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
-		Base:  ptr.Ptr(repository.DefaultBranch),
-		Head:  ptr.Ptr(sourceBranch),
+	_, _, err = client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, github.CreatePullRequest{
+		Base:  repository.DefaultBranch,
+		Head:  sourceBranch,
 		Title: ptr.Ptr(title),
 		Body:  ptr.Ptr(description),
 	})
@@ -417,9 +417,9 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 		}
 	} else {
 		log.Debug().Str("source_branch", sourceBranch).Str("target_branch", repository.DefaultBranch).Str("title", title).Msg("no existing pull request found, creating")
-		_, _, createErr := n.client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, &github.NewPullRequest{
-			Base:  ptr.Ptr(repository.DefaultBranch),
-			Head:  ptr.Ptr(sourceBranch),
+		_, _, createErr := n.client.PullRequests.Create(context.Background(), repository.Namespace, repository.Name, github.CreatePullRequest{
+			Base:  repository.DefaultBranch,
+			Head:  sourceBranch,
 			Title: ptr.Ptr(title),
 			Body:  ptr.Ptr(description),
 		})
