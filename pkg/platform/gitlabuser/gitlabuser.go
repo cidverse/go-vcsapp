@@ -3,6 +3,7 @@ package gitlabuser
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cidverse/go-ptr"
@@ -441,6 +442,14 @@ func (n Platform) CreateTag(repository api.Repository, tag string, commitHash st
 func (n Platform) Variables(repo api.Repository) ([]api.CIVariable, error) {
 	var result []api.CIVariable
 
+	// group-level variables first so project-level variables (appended below) override them
+	groupVars, err := n.groupVariables(repo)
+	if err != nil {
+		log.Warn().Err(err).Str("namespace", repo.Namespace).Msg("failed to list group variables")
+	} else {
+		result = append(result, groupVars...)
+	}
+
 	variables, _, err := n.client.ProjectVariables.ListVariables(int(repo.Id), &gitlab.ListProjectVariablesOptions{
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
@@ -455,16 +464,49 @@ func (n Platform) Variables(repo api.Repository) ([]api.CIVariable, error) {
 			continue
 		}
 
-		result = append(result, api.CIVariable{
-			Name:      v.Key,
-			Value:     v.Value,
-			IsSecret:  v.Protected || v.Masked || v.Hidden,
-			CreatedAt: nil,
-			UpdatedAt: nil,
-		})
+		result = append(result, toCIVariable(v.Key, v.Value, v.Protected, v.Masked, v.Hidden))
 	}
 
 	return result, nil
+}
+
+func (n Platform) groupVariables(repo api.Repository) ([]api.CIVariable, error) {
+	if repo.IsPersonalProject || repo.Namespace == "" {
+		return nil, nil
+	}
+
+	var result []api.CIVariable
+	parts := strings.Split(repo.Namespace, "/")
+	for i := 1; i <= len(parts); i++ {
+		group := strings.Join(parts[:i], "/")
+
+		variables, _, err := n.client.GroupVariables.ListVariables(group, &gitlab.ListGroupVariablesOptions{
+			ListOptions: gitlab.ListOptions{
+				PerPage: pageSize,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list group variables [%s]: %w", group, err)
+		}
+
+		for _, v := range variables {
+			if v.EnvironmentScope != "" {
+				continue
+			}
+
+			result = append(result, toCIVariable(v.Key, v.Value, v.Protected, v.Masked, v.Hidden))
+		}
+	}
+
+	return result, nil
+}
+
+func toCIVariable(key, value string, protected, masked, hidden bool) api.CIVariable {
+	return api.CIVariable{
+		Name:     key,
+		Value:    value,
+		IsSecret: protected || masked || hidden,
+	}
 }
 
 func (n Platform) Environments(repo api.Repository) ([]api.CIEnvironment, error) {
