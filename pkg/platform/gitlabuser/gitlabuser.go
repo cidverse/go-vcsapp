@@ -460,7 +460,7 @@ func (n Platform) Variables(repo api.Repository) ([]api.CIVariable, error) {
 	}
 
 	for _, v := range variables {
-		if v.EnvironmentScope != "" {
+		if v.EnvironmentScope != "" && v.EnvironmentScope != "*" {
 			continue
 		}
 
@@ -490,7 +490,7 @@ func (n Platform) groupVariables(repo api.Repository) ([]api.CIVariable, error) 
 		}
 
 		for _, v := range variables {
-			if v.EnvironmentScope != "" {
+			if v.EnvironmentScope != "" && v.EnvironmentScope != "*" {
 				continue
 			}
 
