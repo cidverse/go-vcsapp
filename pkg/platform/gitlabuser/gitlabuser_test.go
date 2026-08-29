@@ -70,7 +70,8 @@ func TestVariablesGroupFetchFailureDoesNotFail(t *testing.T) {
 	platform, _ := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v4/groups/primelib/variables":
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"404 Group Not found"}`))
 		case "/api/v4/projects/123/variables":
 			_, _ = w.Write([]byte(`[
 				{"key":"PROJECT_KEY","value":"project-value","protected":true,"masked":false,"hidden":false,"environment_scope":""}
