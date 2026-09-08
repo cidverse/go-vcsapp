@@ -12,7 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/rs/zerolog/log"
-	"gitlab.com/gitlab-org/api/client-go/v2"
+	"gitlab.com/gitlab-org/api/client-go/v3"
 )
 
 const pageSize = 100
