@@ -132,11 +132,11 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 			if opts.IncludeCommitHash {
 				commit, _, err := orgClient.Repositories.GetCommit(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), "heads/"+repo.GetDefaultBranch(), &github.ListOptions{})
 				if err != nil {
-					if !strings.Contains(err.Error(), "409 Git Repository is empty") {
+					if !strings.Contains(err.Error(), "409 Git Repository is empty") && !strings.Contains(err.Error(), "404 Not Found") {
 						return result, fmt.Errorf("failed to get commit: %w", err)
-					} else {
-						r.IsEmpty = true
 					}
+
+					r.IsEmpty = true
 				} else {
 					r.CommitHash = commit.GetSHA()
 					user := commit.GetCommitter()
@@ -150,11 +150,11 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 			if opts.IncludeBranches {
 				branchList, _, err := orgClient.Repositories.ListBranches(context.Background(), repo.GetOwner().GetLogin(), repo.GetName(), &github.BranchListOptions{})
 				if err != nil {
-					if !strings.Contains(err.Error(), "409 Git Repository is empty") {
+					if !strings.Contains(err.Error(), "409 Git Repository is empty") && !strings.Contains(err.Error(), "404 Not Found") {
 						return result, fmt.Errorf("failed to list branches: %w", err)
-					} else {
-						r.IsEmpty = true
 					}
+
+					r.IsEmpty = true
 				} else {
 					r.Branches = githubcommon.BranchSliceToNameSlice(branchList)
 				}
