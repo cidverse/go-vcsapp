@@ -8,6 +8,7 @@ import (
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gitlab.com/gitlab-org/api/client-go/v3"
 )
 
 func newTestPlatform(t *testing.T, handler http.HandlerFunc) (Platform, *httptest.Server) {
@@ -114,4 +115,56 @@ func TestVariablesSkipsGroupVariablesForPersonalProjects(t *testing.T) {
 	assert.False(t, groupCalled)
 	require.Len(t, variables, 1)
 	assert.Equal(t, "PROJECT_KEY", variables[0].Name)
+}
+
+func TestConvertRepositorySetsArchived(t *testing.T) {
+	assert.True(t, convertRepository(&gitlab.Project{Archived: true, Namespace: &gitlab.ProjectNamespace{}}).IsArchived)
+	assert.False(t, convertRepository(&gitlab.Project{Archived: false, Namespace: &gitlab.ProjectNamespace{}}).IsArchived)
+}
+
+func newProjectListPlatform(t *testing.T, archivedQuery *string) Platform {
+	t.Helper()
+	platform, _ := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v4/projects":
+			*archivedQuery = r.URL.Query().Get("archived")
+			// emulate the server-side filter
+			if *archivedQuery == "false" {
+				_, _ = w.Write([]byte(`[{"id":1,"path_with_namespace":"cidverse/active","archived":false,"namespace":{"full_path":"cidverse","kind":"group"}}]`))
+				return
+			}
+			_, _ = w.Write([]byte(`[
+				{"id":1,"path_with_namespace":"cidverse/active","archived":false,"namespace":{"full_path":"cidverse","kind":"group"}},
+				{"id":2,"path_with_namespace":"cidverse/archived","archived":true,"namespace":{"full_path":"cidverse","kind":"group"}}
+			]`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	return platform
+}
+
+func TestRepositoriesSkipsArchivedByDefault(t *testing.T) {
+	var archivedQuery string
+	platform := newProjectListPlatform(t, &archivedQuery)
+
+	repos, err := platform.Repositories(api.RepositoryListOpts{})
+	require.NoError(t, err)
+	assert.Equal(t, "false", archivedQuery)
+	require.Len(t, repos, 1)
+	assert.Equal(t, "cidverse/active", repos[0].Path)
+	assert.False(t, repos[0].IsArchived)
+}
+
+func TestRepositoriesIncludesArchivedWhenRequested(t *testing.T) {
+	var archivedQuery string
+	platform := newProjectListPlatform(t, &archivedQuery)
+
+	repos, err := platform.Repositories(api.RepositoryListOpts{IncludeArchived: true})
+	require.NoError(t, err)
+	assert.Empty(t, archivedQuery)
+	require.Len(t, repos, 2)
+	assert.Equal(t, "cidverse/archived", repos[1].Path)
+	assert.True(t, repos[1].IsArchived)
 }

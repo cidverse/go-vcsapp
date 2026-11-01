@@ -27,6 +27,7 @@ type Platform struct {
 	appId      int64
 	privateKey string
 	client     *github.Client
+	baseURL    string // overrides the GitHub API base url (used in tests), defaults to https://api.github.com
 }
 
 type Config struct {
@@ -79,7 +80,12 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 		if err != nil {
 			return result, fmt.Errorf("failed to create installation transport: %w", err)
 		}
-		orgClient, err := github.NewClient(github.WithTransport(itr))
+		clientOpts := []github.ClientOptionsFunc{github.WithTransport(itr)}
+		if n.baseURL != "" {
+			itr.BaseURL = strings.TrimRight(n.baseURL, "/")
+			clientOpts = append(clientOpts, github.WithURLs(&n.baseURL, nil))
+		}
+		orgClient, err := github.NewClient(clientOpts...)
 		if err != nil {
 			return result, fmt.Errorf("failed to create github client: %w", err)
 		}
@@ -101,6 +107,11 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 		log.Debug().Str("org", installation.Account.GetLogin()).Int("count", len(repositories)).Msg("github platform - found repositories in organization")
 
 		for _, repo := range repositories {
+			// github has no server-side filter for archived repositories, skip them before any further api calls
+			if repo.GetArchived() && !opts.IncludeArchived {
+				continue
+			}
+
 			r := api.Repository{
 				PlatformId:        api.GetServerIdFromCloneURL(repo.GetCloneURL()),
 				PlatformType:      "github",
@@ -117,6 +128,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 				IsFork:            repo.GetFork(),
 				IsEmpty:           false,
 				IsPersonalProject: strings.EqualFold(installation.GetAccount().GetType(), "user"),
+				IsArchived:        repo.GetArchived(),
 				Topics:            repo.Topics,
 				CreatedAt:         repo.CreatedAt.GetTime(),
 				RoundTripper:      itr,

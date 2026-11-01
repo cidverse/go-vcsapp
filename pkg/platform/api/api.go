@@ -67,6 +67,7 @@ type Repository struct {
 	IsFork            bool              // is this repository a fork
 	IsEmpty           bool              // is this repository empty (no commits)
 	IsPersonalProject bool              // true if repository owner is a personal user account
+	IsArchived        bool              // is this repository archived (read-only)
 	Branches          []string          // list of all branches
 	Topics            []string          // list of all topics
 	Plan              string            // the plan of the repository (e.g. free, pro, etc. - directly using the platform-specific plan name)
@@ -169,6 +170,7 @@ type RepositoryListOpts struct {
 	IncludeBranches   bool
 	IncludeCommitHash bool
 	IncludePlan       bool
+	IncludeArchived   bool // include archived repositories, which are skipped by default
 }
 
 type User struct {

@@ -46,10 +46,12 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	repositoryOpts := &gitlab.ListProjectsOptions{
 		MinAccessLevel: ptr.Ptr(gitlab.MaintainerPermissions),
 		Membership:     ptr.True(),
-		Archived:       ptr.False(),
 		ListOptions: gitlab.ListOptions{
 			PerPage: pageSize,
 		},
+	}
+	if !opts.IncludeArchived {
+		repositoryOpts.Archived = ptr.False()
 	}
 	for {
 		data, resp, err := n.client.Projects.ListProjects(repositoryOpts, nil)

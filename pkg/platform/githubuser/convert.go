@@ -25,6 +25,7 @@ func convertRepository(repo *github.Repository, client *github.Client) api.Repos
 		IsFork:            repo.GetFork(),
 		IsEmpty:           false,
 		IsPersonalProject: strings.EqualFold(repo.GetOwner().GetType(), "user"),
+		IsArchived:        repo.GetArchived(),
 		Topics:            repo.Topics,
 		CreatedAt:         repo.CreatedAt.GetTime(),
 		InternalClient:    client,

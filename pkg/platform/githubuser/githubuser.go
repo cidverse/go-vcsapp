@@ -72,6 +72,11 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 
 	// convert repositories
 	for _, repo := range repositories {
+		// github has no server-side filter for archived repositories, skip them before any further api calls
+		if repo.GetArchived() && !opts.IncludeArchived {
+			continue
+		}
+
 		r := convertRepository(repo, n.client)
 
 		// commit

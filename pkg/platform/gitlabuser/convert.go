@@ -24,6 +24,7 @@ func convertRepository(repo *gitlab.Project) api.Repository {
 		IsFork:            repo.ForkedFromProject != nil,
 		IsEmpty:           repo.EmptyRepo,
 		IsPersonalProject: strings.EqualFold(repo.Namespace.Kind, "user"),
+		IsArchived:        repo.Archived,
 		Topics:            repo.Topics,
 		LicenseURL:        repo.LicenseURL,
 		CreatedAt:         repo.CreatedAt,
