@@ -87,3 +87,16 @@ func RoundTripperToAccessToken(rt http.RoundTripper) (string, error) {
 
 	return "", fmt.Errorf("round tripper is not a ghinstallation.Transport")
 }
+
+// IsNotFound reports whether a GitHub API response is a 404
+func IsNotFound(resp *github.Response) bool {
+	return resp != nil && resp.StatusCode == http.StatusNotFound
+}
+
+// WrapGetRepositoryError wraps a repository lookup error, mapping 404 responses to api.ErrRepositoryNotFound
+func WrapGetRepositoryError(ref any, resp *github.Response, err error) error {
+	if IsNotFound(resp) {
+		return fmt.Errorf("failed to get repository %v: %w", ref, api.ErrRepositoryNotFound)
+	}
+	return fmt.Errorf("failed to get repository %v: %w", ref, err)
+}

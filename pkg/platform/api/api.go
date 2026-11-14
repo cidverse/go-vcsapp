@@ -1,11 +1,15 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
+
+// ErrRepositoryNotFound is returned (wrapped) by the repository lookups if the repository does not exist or is not accessible
+var ErrRepositoryNotFound = errors.New("repository not found")
 
 // Platform provides a common interface to work with all platforms
 type Platform interface {
@@ -15,8 +19,10 @@ type Platform interface {
 	Slug() string
 	// Repositories returns a list of all repositories we have access to
 	Repositories(opts RepositoryListOpts) ([]Repository, error)
-	// FindRepository returns one repository by its name
-	FindRepository(name string) (Repository, error)
+	// FindRepository returns one repository by its path (e.g. organization/repo)
+	FindRepository(path string) (Repository, error)
+	// FindRepositoryById returns one repository by its platform-specific id (only unique within one platform instance, see Repository.PlatformId)
+	FindRepositoryById(id int64) (Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
 	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
 	// MergeRequestDiff returns all changes of a merge request

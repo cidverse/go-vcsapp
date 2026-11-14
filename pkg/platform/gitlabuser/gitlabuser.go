@@ -3,6 +3,7 @@ package gitlabuser
 import (
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -102,9 +103,21 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 }
 
 func (n Platform) FindRepository(path string) (api.Repository, error) {
-	repo, _, err := n.client.Projects.GetProject(path, &gitlab.GetProjectOptions{License: gitlab.Ptr(true)})
+	return n.getRepository(path)
+}
+
+func (n Platform) FindRepositoryById(id int64) (api.Repository, error) {
+	return n.getRepository(id)
+}
+
+// getRepository fetches a project by its id or path (the GitLab API accepts both)
+func (n Platform) getRepository(pid any) (api.Repository, error) {
+	repo, resp, err := n.client.Projects.GetProject(pid, &gitlab.GetProjectOptions{License: gitlab.Ptr(true)})
 	if err != nil {
-		return api.Repository{}, fmt.Errorf("failed to get repository: %w", err)
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return api.Repository{}, fmt.Errorf("failed to get repository %v: %w", pid, api.ErrRepositoryNotFound)
+		}
+		return api.Repository{}, fmt.Errorf("failed to get repository %v: %w", pid, err)
 	}
 
 	return convertRepository(repo), nil

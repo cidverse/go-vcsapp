@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/cidverse/go-ptr"
@@ -27,12 +28,28 @@ type Platform struct {
 	appId      int64
 	privateKey string
 	client     *github.Client
-	baseURL    string // overrides the GitHub API base url (used in tests), defaults to https://api.github.com
+	baseURL    string               // overrides the GitHub API base url (used in tests), defaults to https://api.github.com
+	clients    *installationClients // cache of installation-scoped clients, may be nil (no caching)
 }
 
 type Config struct {
 	AppId      int64  `yaml:"appId"`
 	PrivateKey string `yaml:"privateKey"`
+}
+
+// installationClient is an installation (org / user) scoped client, the transport takes care of refreshing the installation token
+type installationClient struct {
+	transport *ghinstallation.Transport
+	client    *github.Client
+}
+
+type installationClients struct {
+	mu      sync.Mutex
+	clients map[int64]installationClient
+}
+
+func newInstallationClients() *installationClients {
+	return &installationClients{clients: map[int64]installationClient{}}
 }
 
 func githubClientFromRepository(repo api.Repository) (*github.Client, error) {
@@ -48,6 +65,87 @@ func githubClientFromRepository(repo api.Repository) (*github.Client, error) {
 	return client, nil
 }
 
+// installationClient returns a client scoped to the given installation
+func (n Platform) installationClient(installationId int64) (installationClient, error) {
+	if n.clients != nil {
+		n.clients.mu.Lock()
+		defer n.clients.mu.Unlock()
+		if c, ok := n.clients.clients[installationId]; ok {
+			return c, nil
+		}
+	}
+
+	itr, err := ghinstallation.New(sharedTransport, n.appId, installationId, []byte(n.privateKey))
+	if err != nil {
+		return installationClient{}, fmt.Errorf("failed to create installation transport: %w", err)
+	}
+	clientOpts := []github.ClientOptionsFunc{github.WithTransport(itr)}
+	if n.baseURL != "" {
+		itr.BaseURL = strings.TrimRight(n.baseURL, "/")
+		clientOpts = append(clientOpts, github.WithURLs(&n.baseURL, nil))
+	}
+	client, err := github.NewClient(clientOpts...)
+	if err != nil {
+		return installationClient{}, fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	c := installationClient{transport: itr, client: client}
+	if n.clients != nil {
+		n.clients.clients[installationId] = c
+	}
+	return c, nil
+}
+
+// installations returns all installations of the app
+func (n Platform) installations() ([]*github.Installation, error) {
+	var installations []*github.Installation
+	opts := &github.ListOptions{PerPage: pageSize}
+	for {
+		data, resp, err := n.client.Apps.ListInstallations(context.Background(), opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list installations: %w", err)
+		}
+		installations = append(installations, data...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return installations, nil
+}
+
+func convertRepository(repo *github.Repository, installation *github.Installation, ic installationClient) api.Repository {
+	r := api.Repository{
+		PlatformId:        api.GetServerIdFromCloneURL(repo.GetCloneURL()),
+		PlatformType:      "github",
+		Id:                repo.GetID(),
+		Namespace:         repo.GetOwner().GetLogin(),
+		Name:              repo.GetName(),
+		Path:              repo.GetFullName(),
+		Description:       repo.GetDescription(),
+		Type:              "git",
+		URL:               strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
+		CloneURL:          repo.GetCloneURL(),
+		CloneSSH:          repo.GetSSHURL(),
+		DefaultBranch:     repo.GetDefaultBranch(),
+		IsFork:            repo.GetFork(),
+		IsEmpty:           false,
+		IsPersonalProject: strings.EqualFold(installation.GetAccount().GetType(), "user"),
+		IsArchived:        repo.GetArchived(),
+		Topics:            repo.Topics,
+		CreatedAt:         repo.CreatedAt.GetTime(),
+		RoundTripper:      ic.transport,
+		InternalClient:    ic.client,
+		InternalRepo:      repo,
+	}
+	if repo.GetLicense() != nil {
+		r.LicenseName = repo.GetLicense().GetName()
+		r.LicenseURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/LICENSE", repo.GetOwner().GetLogin(), repo.GetName(), repo.GetDefaultBranch())
+	}
+
+	return r
+}
+
 func (n Platform) Name() string {
 	return "GitHub"
 }
@@ -59,36 +157,18 @@ func (n Platform) Slug() string {
 func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, error) {
 	var result []api.Repository
 
-	// query installations
-	var installations []*github.Installation
-	installationOpts := &github.ListOptions{PerPage: pageSize}
-	for {
-		data, resp, err := n.client.Apps.ListInstallations(context.Background(), installationOpts)
-		if err != nil {
-			log.Fatal().Err(err).Interface("opts", installationOpts).Msg("failed to list installations")
-		}
-		installations = append(installations, data...)
-		if resp.NextPage == 0 {
-			break
-		}
-		installationOpts.Page = resp.NextPage
+	installations, err := n.installations()
+	if err != nil {
+		return result, err
 	}
 	log.Info().Int("count", len(installations)).Msg("github platform - found app installations")
 
 	for _, installation := range installations {
-		itr, err := ghinstallation.New(sharedTransport, n.appId, *installation.ID, []byte(n.privateKey))
+		ic, err := n.installationClient(installation.GetID())
 		if err != nil {
-			return result, fmt.Errorf("failed to create installation transport: %w", err)
+			return result, err
 		}
-		clientOpts := []github.ClientOptionsFunc{github.WithTransport(itr)}
-		if n.baseURL != "" {
-			itr.BaseURL = strings.TrimRight(n.baseURL, "/")
-			clientOpts = append(clientOpts, github.WithURLs(&n.baseURL, nil))
-		}
-		orgClient, err := github.NewClient(clientOpts...)
-		if err != nil {
-			return result, fmt.Errorf("failed to create github client: %w", err)
-		}
+		orgClient := ic.client
 
 		// query repositories
 		var repositories []*github.Repository
@@ -112,33 +192,7 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 				continue
 			}
 
-			r := api.Repository{
-				PlatformId:        api.GetServerIdFromCloneURL(repo.GetCloneURL()),
-				PlatformType:      "github",
-				Id:                repo.GetID(),
-				Namespace:         repo.GetOwner().GetLogin(),
-				Name:              repo.GetName(),
-				Path:              repo.GetFullName(),
-				Description:       repo.GetDescription(),
-				Type:              "git",
-				URL:               strings.TrimPrefix(repo.GetHTMLURL(), "https://"),
-				CloneURL:          repo.GetCloneURL(),
-				CloneSSH:          repo.GetSSHURL(),
-				DefaultBranch:     repo.GetDefaultBranch(),
-				IsFork:            repo.GetFork(),
-				IsEmpty:           false,
-				IsPersonalProject: strings.EqualFold(installation.GetAccount().GetType(), "user"),
-				IsArchived:        repo.GetArchived(),
-				Topics:            repo.Topics,
-				CreatedAt:         repo.CreatedAt.GetTime(),
-				RoundTripper:      itr,
-				InternalClient:    orgClient,
-				InternalRepo:      repo,
-			}
-			if repo.GetLicense() != nil {
-				r.LicenseName = repo.GetLicense().GetName()
-				r.LicenseURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/LICENSE", repo.GetOwner().GetLogin(), repo.GetName(), repo.GetDefaultBranch())
-			}
+			r := convertRepository(repo, installation, ic)
 
 			// commit
 			if opts.IncludeCommitHash {
@@ -179,8 +233,80 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 	return result, nil
 }
 
+// FindRepository looks up the installation that covers the repository and fetches it with an installation-scoped client
 func (n Platform) FindRepository(path string) (api.Repository, error) {
-	return api.Repository{}, fmt.Errorf("not implemented")
+	owner, name, ok := strings.Cut(path, "/")
+	if !ok || owner == "" || name == "" {
+		return api.Repository{}, fmt.Errorf("invalid repository path %q, expected owner/name", path)
+	}
+
+	installation, resp, err := n.client.Apps.GetRepositoryInstallation(context.Background(), owner, name)
+	if err != nil {
+		return api.Repository{}, githubcommon.WrapGetRepositoryError(path, resp, err)
+	}
+	ic, err := n.installationClient(installation.GetID())
+	if err != nil {
+		return api.Repository{}, err
+	}
+
+	repo, resp, err := ic.client.Repositories.Get(context.Background(), owner, name)
+	if err != nil {
+		return api.Repository{}, githubcommon.WrapGetRepositoryError(path, resp, err)
+	}
+
+	return convertRepository(repo, installation, ic), nil
+}
+
+// FindRepositoryById fetches a repository by id.
+// The installation is resolved via the undocumented GET /repositories/{id}/installation endpoint, if that fails with 404 every installation is tried until one has access.
+func (n Platform) FindRepositoryById(id int64) (api.Repository, error) {
+	installation, resp, err := n.client.Apps.GetRepositoryInstallationByID(context.Background(), id)
+	if err == nil {
+		repo, found, err := n.getRepositoryByIdWithInstallation(id, installation)
+		if err != nil {
+			return api.Repository{}, err
+		}
+		if found {
+			return repo, nil
+		}
+	} else if !githubcommon.IsNotFound(resp) {
+		return api.Repository{}, githubcommon.WrapGetRepositoryError(id, resp, err)
+	}
+
+	// fallback: scan all installations
+	installations, err := n.installations()
+	if err != nil {
+		return api.Repository{}, err
+	}
+	for _, inst := range installations {
+		repo, found, err := n.getRepositoryByIdWithInstallation(id, inst)
+		if err != nil {
+			return api.Repository{}, err
+		}
+		if found {
+			return repo, nil
+		}
+	}
+
+	return api.Repository{}, fmt.Errorf("failed to get repository %d: %w", id, api.ErrRepositoryNotFound)
+}
+
+// getRepositoryByIdWithInstallation fetches a repository by id using an installation-scoped client, found is false if the installation has no access
+func (n Platform) getRepositoryByIdWithInstallation(id int64, installation *github.Installation) (repository api.Repository, found bool, err error) {
+	ic, err := n.installationClient(installation.GetID())
+	if err != nil {
+		return api.Repository{}, false, err
+	}
+
+	repo, resp, err := ic.client.Repositories.GetByID(context.Background(), id)
+	if err != nil {
+		if githubcommon.IsNotFound(resp) {
+			return api.Repository{}, false, nil
+		}
+		return api.Repository{}, false, githubcommon.WrapGetRepositoryError(id, resp, err)
+	}
+
+	return convertRepository(repo, installation, ic), true, nil
 }
 
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
@@ -715,6 +841,7 @@ func NewPlatform(config Config) (Platform, error) {
 		appId:      config.AppId,
 		privateKey: config.PrivateKey,
 		client:     client,
+		clients:    newInstallationClients(),
 	}
 
 	return platform, nil

@@ -168,3 +168,40 @@ func TestRepositoriesIncludesArchivedWhenRequested(t *testing.T) {
 	assert.Equal(t, "cidverse/archived", repos[1].Path)
 	assert.True(t, repos[1].IsArchived)
 }
+
+func newProjectGetPlatform(t *testing.T) Platform {
+	t.Helper()
+	platform, _ := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.EscapedPath() {
+		case "/api/v4/projects/1", "/api/v4/projects/cidverse%2Factive":
+			_, _ = w.Write([]byte(`{"id":1,"path_with_namespace":"cidverse/active","http_url_to_repo":"https://gitlab.company.com/cidverse/active.git","namespace":{"full_path":"cidverse","kind":"group"}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	return platform
+}
+
+func TestFindRepository(t *testing.T) {
+	platform := newProjectGetPlatform(t)
+
+	repo, err := platform.FindRepository("cidverse/active")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), repo.Id)
+	assert.Equal(t, "gitlab-company-com", repo.PlatformId)
+
+	_, err = platform.FindRepository("cidverse/missing")
+	assert.ErrorIs(t, err, api.ErrRepositoryNotFound)
+}
+
+func TestFindRepositoryById(t *testing.T) {
+	platform := newProjectGetPlatform(t)
+
+	repo, err := platform.FindRepositoryById(1)
+	require.NoError(t, err)
+	assert.Equal(t, "cidverse/active", repo.Path)
+
+	_, err = platform.FindRepositoryById(99)
+	assert.ErrorIs(t, err, api.ErrRepositoryNotFound)
+}

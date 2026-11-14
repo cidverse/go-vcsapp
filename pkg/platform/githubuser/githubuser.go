@@ -118,14 +118,23 @@ func (n Platform) Repositories(opts api.RepositoryListOpts) ([]api.Repository, e
 }
 
 func (n Platform) FindRepository(path string) (api.Repository, error) {
-	// split owner and name
-	owner := strings.Split(path, "/")[0]
-	name := strings.Split(path, "/")[1]
+	owner, name, ok := strings.Cut(path, "/")
+	if !ok || owner == "" || name == "" {
+		return api.Repository{}, fmt.Errorf("invalid repository path %q, expected owner/name", path)
+	}
 
-	// find repository
-	repo, _, err := n.client.Repositories.Get(context.Background(), owner, name)
+	repo, resp, err := n.client.Repositories.Get(context.Background(), owner, name)
 	if err != nil {
-		return api.Repository{}, fmt.Errorf("failed to get repository: %w", err)
+		return api.Repository{}, githubcommon.WrapGetRepositoryError(path, resp, err)
+	}
+
+	return convertRepository(repo, n.client), nil
+}
+
+func (n Platform) FindRepositoryById(id int64) (api.Repository, error) {
+	repo, resp, err := n.client.Repositories.GetByID(context.Background(), id)
+	if err != nil {
+		return api.Repository{}, githubcommon.WrapGetRepositoryError(id, resp, err)
 	}
 
 	return convertRepository(repo, n.client), nil

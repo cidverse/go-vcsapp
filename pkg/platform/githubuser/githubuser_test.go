@@ -79,3 +79,46 @@ func TestRepositoriesIncludesArchivedWhenRequested(t *testing.T) {
 	assert.Equal(t, "cidverse/archived", repos[1].Path)
 	assert.True(t, repos[1].IsArchived)
 }
+
+const testRepository = `{"id":1,"name":"active","full_name":"cidverse/active","default_branch":"main","owner":{"login":"cidverse","type":"Organization"}}`
+
+func TestFindRepository(t *testing.T) {
+	platform := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/cidverse/active":
+			_, _ = w.Write([]byte(testRepository))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	repo, err := platform.FindRepository("cidverse/active")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), repo.Id)
+	assert.NotNil(t, repo.InternalClient)
+
+	_, err = platform.FindRepository("cidverse/missing")
+	assert.ErrorIs(t, err, api.ErrRepositoryNotFound)
+
+	_, err = platform.FindRepository("invalid")
+	assert.Error(t, err)
+}
+
+func TestFindRepositoryById(t *testing.T) {
+	platform := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repositories/1":
+			_, _ = w.Write([]byte(testRepository))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	repo, err := platform.FindRepositoryById(1)
+	require.NoError(t, err)
+	assert.Equal(t, "cidverse/active", repo.Path)
+	assert.NotNil(t, repo.InternalClient)
+
+	_, err = platform.FindRepositoryById(99)
+	assert.ErrorIs(t, err, api.ErrRepositoryNotFound)
+}
