@@ -6,17 +6,14 @@ import (
 	"strings"
 )
 
-// GetServerIdFromCloneURL returns the server id from a clone / remote url
+// GetServerIdFromCloneURL returns the server id from a clone / remote url.
+// The id is the slugified full hostname (without port), e.g. gitlab.company.com -> gitlab-company-com.
 func GetServerIdFromCloneURL(repo string) string {
 	u, err := url.Parse(repo)
 	if err != nil || u.Hostname() == "" {
 		return "unknown"
 	}
 
-	parts := strings.Split(u.Hostname(), ".")
-	if len(parts) >= 2 {
-		return Slugify(parts[len(parts)-2] + "." + parts[len(parts)-1])
-	}
 	return Slugify(u.Hostname())
 }
 

@@ -15,6 +15,10 @@ func TestGetServerIdFromCloneURL(t *testing.T) {
 		{"https://unknown-url.com/username/repo.git", "unknown-url-com"},
 		{"invalid-url", "unknown"},
 		{"ftp://invalid-url.com", "invalid-url-com"},
+		{"https://gitlab.company.com/group/repo.git", "gitlab-company-com"},
+		{"https://git.company.com/group/repo.git", "git-company-com"},
+		{"https://gitlab.local:8443/group/repo.git", "gitlab-local"},
+		{"https://localhost/group/repo.git", "localhost"},
 	}
 
 	for _, tc := range testCases {
