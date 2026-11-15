@@ -160,29 +160,31 @@ func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSea
 	}
 
 	for _, pr := range mergeRequests {
-		entry := api.MergeRequest{
-			Id:           pr.ID,
-			Number:       int(pr.IID),
-			Title:        pr.Title,
-			Description:  pr.Description,
-			Labels:       toMergeRequestLabels(pr.Labels),
-			SourceBranch: pr.SourceBranch,
-			TargetBranch: pr.TargetBranch,
-			State:        toMergeRequestState(pr.State),
-			IsMerged:     pr.MergedAt != nil,
-			IsLocked:     pr.DiscussionLocked,
-			IsDraft:      pr.Draft,
-			HasConflicts: pr.HasConflicts,
-			CanMerge:     pr.DetailedMergeStatus == "mergeable", // see https://docs.gitlab.com/ee/api/merge_requests.html#merge-status
-			Author:       toUser(pr.Author),
-			Repository:   repo,
-		}
+		entry := toMergeRequest(pr, repo)
 		entry.PipelineState = api.PipelineStateUnknown // list request does not provide pipeline status in Pipeline.Status
 
 		result = append(result, entry)
 	}
 
 	return result, nil
+}
+
+func (n Platform) MergeRequest(repo api.Repository, number int) (api.MergeRequest, error) {
+	mr, resp, err := n.client.MergeRequests.GetMergeRequest(int(repo.Id), int64(number), &gitlab.GetMergeRequestsOptions{})
+	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return api.MergeRequest{}, fmt.Errorf("failed to get merge request %s!%d: %w", repo.Path, number, api.ErrMergeRequestNotFound)
+		}
+		return api.MergeRequest{}, fmt.Errorf("failed to get merge request %s!%d: %w", repo.Path, number, err)
+	}
+
+	entry := toMergeRequest(&mr.BasicMergeRequest, repo)
+	entry.PipelineState = api.PipelineStateUnknown
+	if mr.HeadPipeline != nil {
+		entry.PipelineState = toPipelineState(mr.HeadPipeline.Status)
+	}
+
+	return entry, nil
 }
 
 func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRequest) (api.MergeRequestDiff, error) {
@@ -215,7 +217,7 @@ func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRe
 
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
 	if message != nil {
-		_, _, err := n.client.Notes.CreateMergeRequestNote(int(repo.Id), mergeRequest.Id, &gitlab.CreateMergeRequestNoteOptions{
+		_, _, err := n.client.Notes.CreateMergeRequestNote(int(repo.Id), int64(mergeRequest.Number), &gitlab.CreateMergeRequestNoteOptions{
 			Body: message,
 		})
 		if err != nil {
@@ -224,12 +226,12 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 	}
 
 	if approved {
-		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(int(repo.Id), mergeRequest.Id, &gitlab.ApproveMergeRequestOptions{})
+		_, _, err := n.client.MergeRequestApprovals.ApproveMergeRequest(int(repo.Id), int64(mergeRequest.Number), &gitlab.ApproveMergeRequestOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to approve merge request: %w", err)
 		}
 	} else {
-		_, err := n.client.MergeRequestApprovals.UnapproveMergeRequest(int(repo.Id), mergeRequest.Id)
+		_, err := n.client.MergeRequestApprovals.UnapproveMergeRequest(int(repo.Id), int64(mergeRequest.Number))
 		if err != nil {
 			return fmt.Errorf("failed to unapprove merge request: %w", err)
 		}
@@ -239,12 +241,13 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 }
 
 func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, mergeStrategy api.MergeStrategyOptions) error {
-	_, _, err := n.client.MergeRequests.AcceptMergeRequest(int(repo.Id), mergeRequest.Id, &gitlab.AcceptMergeRequestOptions{
+	_, resp, err := n.client.MergeRequests.AcceptMergeRequest(int(repo.Id), int64(mergeRequest.Number), &gitlab.AcceptMergeRequestOptions{
 		Squash:                   mergeStrategy.Squash,
 		ShouldRemoveSourceBranch: mergeStrategy.RemoveSourceBranch,
+		SHA:                      mergeStrategy.ExpectedHeadSHA,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to resolve merge request: %w", err)
+		return wrapMergeError(repo, mergeRequest, resp, err)
 	}
 
 	return nil

@@ -11,6 +11,16 @@ import (
 // ErrRepositoryNotFound is returned (wrapped) by the repository lookups if the repository does not exist or is not accessible
 var ErrRepositoryNotFound = errors.New("repository not found")
 
+// ErrMergeRequestNotFound is returned (wrapped) by MergeRequest if the merge request does not exist or is not accessible
+var ErrMergeRequestNotFound = errors.New("merge request not found")
+
+// ErrMergeForbidden is returned (wrapped) by Merge if the user is not allowed to merge (GitHub 403, GitLab 401/403)
+var ErrMergeForbidden = errors.New("not allowed to merge")
+
+// ErrNotMergeable is returned (wrapped) by Merge if the merge request cannot be merged right now (GitHub 405/409, GitLab 405/406/409/422):
+// conflicts, failed/pending checks, missing approvals, head changed (see MergeStrategyOptions.ExpectedHeadSHA), draft.
+var ErrNotMergeable = errors.New("merge request is not mergeable")
+
 // Platform provides a common interface to work with all platforms
 type Platform interface {
 	// Name returns the name of the platform
@@ -25,11 +35,14 @@ type Platform interface {
 	FindRepositoryById(id int64) (Repository, error)
 	// MergeRequests returns a list of all pull requests created by us
 	MergeRequests(repository Repository, options MergeRequestSearchOptions) ([]MergeRequest, error)
+	// MergeRequest returns a single, fully populated merge request by its project-scoped number (GitHub PR number / GitLab IID).
+	// Unlike MergeRequests, this includes the mergeability (CanMerge, HasConflicts) on all platforms. Returns a wrapped ErrMergeRequestNotFound on 404.
+	MergeRequest(repository Repository, number int) (MergeRequest, error)
 	// MergeRequestDiff returns all changes of a merge request
 	MergeRequestDiff(repo Repository, mergeRequest MergeRequest) (MergeRequestDiff, error)
 	// SubmitReview submits a review result / approval for a merge request
 	SubmitReview(repo Repository, mergeRequest MergeRequest, approved bool, message *string) error
-	// Merge merges a merge request
+	// Merge merges a merge request (identified by MergeRequest.Number), errors wrap ErrMergeForbidden or ErrNotMergeable where applicable
 	Merge(repo Repository, mergeRequest MergeRequest, mergeStrategy MergeStrategyOptions) error
 	// Languages returns a map of used languages and their line count
 	Languages(repository Repository) (map[string]int, error)
@@ -88,9 +101,9 @@ type Repository struct {
 }
 
 type MergeRequest struct {
-	// ID is the unique identifier of the merge request
+	// ID is the globally unique identifier of the merge request (do not use for API calls, see Number)
 	Id int64
-	// Number is the project-specific number of the merge request (e.g. 42)
+	// Number is the project-specific number of the merge request (e.g. 42), GitHub PR number / GitLab IID
 	Number int
 	// Title is the title of the merge request
 	Title string
@@ -98,6 +111,8 @@ type MergeRequest struct {
 	Description string
 	// Labels is a list of labels assigned to the merge request
 	Labels []string
+	// HeadSHA is the commit hash of the head of the source branch
+	HeadSHA string
 	// SourceBranch is the source branch of the merge request
 	SourceBranch string
 	// TargetBranch is the target branch of the merge request
@@ -115,7 +130,12 @@ type MergeRequest struct {
 	// HasConflicts is true if the merge request has conflicts
 	HasConflicts bool
 	// CanMerge is true if the merge request can be merged (no conflicts, no unresolved discussions, no work in progress, pipeline passed)
+	// Note: GitHub does not provide mergeability in list results, use Platform.MergeRequest to get an accurate value.
 	CanMerge bool
+	// CreatedAt is the creation date of the merge request
+	CreatedAt *time.Time
+	// UpdatedAt is the last update date of the merge request
+	UpdatedAt *time.Time
 	// Author is the author of the merge request
 	Author User
 	// Repository is the repository of the merge request
@@ -170,6 +190,8 @@ type Release struct {
 type MergeStrategyOptions struct {
 	Squash             *bool
 	RemoveSourceBranch *bool
+	// ExpectedHeadSHA guards against merging commits pushed after the mergeability check, the merge fails with ErrNotMergeable if the head does not match
+	ExpectedHeadSHA *string
 }
 
 type RepositoryListOpts struct {

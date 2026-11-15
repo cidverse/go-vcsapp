@@ -1,10 +1,12 @@
 package gitlabuser
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/cidverse/go-ptr"
 	"github.com/cidverse/go-vcsapp/pkg/platform/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -204,4 +206,104 @@ func TestFindRepositoryById(t *testing.T) {
 
 	_, err = platform.FindRepositoryById(99)
 	assert.ErrorIs(t, err, api.ErrRepositoryNotFound)
+}
+
+var testMergeRepo = api.Repository{Id: 123, Path: "primelib/repo"}
+
+func TestMergeRequestsTimestampsAndHeadSHA(t *testing.T) {
+	platform, _ := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/api/v4/projects/123/merge_requests", r.URL.Path)
+		assert.Equal(t, "ci/cid-workflow-1.2.3", r.URL.Query().Get("source_branch"))
+		_, _ = w.Write([]byte(`[{"id":9001,"iid":7,"state":"opened","sha":"abc","source_branch":"ci/cid-workflow-1.2.3","target_branch":"main","detailed_merge_status":"mergeable","created_at":"2026-01-02T03:04:05Z","updated_at":"2026-01-03T03:04:05Z"}]`))
+	})
+
+	mrs, err := platform.MergeRequests(testMergeRepo, api.MergeRequestSearchOptions{SourceBranch: "ci/cid-workflow-1.2.3"})
+	require.NoError(t, err)
+	require.Len(t, mrs, 1)
+	assert.Equal(t, int64(9001), mrs[0].Id)
+	assert.Equal(t, 7, mrs[0].Number)
+	assert.Equal(t, "abc", mrs[0].HeadSHA)
+	assert.True(t, mrs[0].CanMerge)
+	require.NotNil(t, mrs[0].CreatedAt)
+	require.NotNil(t, mrs[0].UpdatedAt)
+	assert.Equal(t, 2026, mrs[0].CreatedAt.Year())
+	assert.Equal(t, 3, mrs[0].UpdatedAt.Day())
+}
+
+func TestMergeRequestByIID(t *testing.T) {
+	platform, _ := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v4/projects/123/merge_requests/7":
+			_, _ = w.Write([]byte(`{"id":9001,"iid":7,"state":"opened","sha":"abc","detailed_merge_status":"mergeable","head_pipeline":{"status":"success"}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"404 Not found"}`))
+		}
+	})
+
+	mr, err := platform.MergeRequest(testMergeRepo, 7)
+	require.NoError(t, err)
+	assert.Equal(t, 7, mr.Number)
+	assert.True(t, mr.CanMerge)
+	assert.Equal(t, api.PipelineStateSuccess, mr.PipelineState)
+
+	_, err = platform.MergeRequest(testMergeRepo, 99)
+	require.ErrorIs(t, err, api.ErrMergeRequestNotFound)
+}
+
+func TestMergeUsesIIDAndExpectedHeadSHA(t *testing.T) {
+	var sha string
+	platform, _ := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/v4/projects/123/merge_requests/7/merge" {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"message":"404 Not found"}`))
+			return
+		}
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		sha, _ = body["sha"].(string)
+		_, _ = w.Write([]byte(`{"id":9001,"iid":7,"state":"merged"}`))
+	})
+
+	err := platform.Merge(testMergeRepo, api.MergeRequest{Id: 9001, Number: 7}, api.MergeStrategyOptions{ExpectedHeadSHA: ptr.Ptr("abc")})
+	require.NoError(t, err)
+	assert.Equal(t, "abc", sha)
+}
+
+func TestMergeErrorClassification(t *testing.T) {
+	tests := []struct {
+		status int
+		want   error
+	}{
+		{http.StatusUnauthorized, api.ErrMergeForbidden},
+		{http.StatusForbidden, api.ErrMergeForbidden},
+		{http.StatusMethodNotAllowed, api.ErrNotMergeable},
+		{http.StatusNotAcceptable, api.ErrNotMergeable},
+		{http.StatusConflict, api.ErrNotMergeable},
+		{http.StatusUnprocessableEntity, api.ErrNotMergeable},
+		{http.StatusBadRequest, nil},
+	}
+	for _, tt := range tests {
+		t.Run(http.StatusText(tt.status), func(t *testing.T) {
+			platform, _ := newTestPlatform(t, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(`{"message":"nope"}`))
+			})
+
+			err := platform.Merge(testMergeRepo, api.MergeRequest{Number: 7}, api.MergeStrategyOptions{})
+			require.Error(t, err)
+			if tt.want == nil {
+				assert.NotErrorIs(t, err, api.ErrMergeForbidden)
+				assert.NotErrorIs(t, err, api.ErrNotMergeable)
+			} else {
+				assert.ErrorIs(t, err, tt.want)
+			}
+		})
+	}
+}
+
+func TestToPipelineStateUnknown(t *testing.T) {
+	assert.Equal(t, api.PipelineStateSuccess, toPipelineState("success"))
+	assert.Equal(t, api.PipelineStateFailed, toPipelineState("failed"))
+	assert.Equal(t, api.PipelineStateUnknown, toPipelineState("some_new_status"))
 }

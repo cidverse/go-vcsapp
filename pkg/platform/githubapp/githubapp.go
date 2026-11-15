@@ -310,102 +310,27 @@ func (n Platform) getRepositoryByIdWithInstallation(id int64, installation *gith
 }
 
 func (n Platform) MergeRequests(repo api.Repository, options api.MergeRequestSearchOptions) ([]api.MergeRequest, error) {
-	var result []api.MergeRequest
 	client, err := githubClientFromRepository(repo)
 	if err != nil {
-		return result, err
+		return nil, err
 	}
+	return githubcommon.ListMergeRequests(client, repo, options)
+}
 
-	searchState := "all"
-	if options.State != nil && *options.State == api.MergeRequestStateOpen {
-		searchState = "open"
-	} else if options.State != nil && *options.State == api.MergeRequestStateClosed {
-		searchState = "closed"
+func (n Platform) MergeRequest(repo api.Repository, number int) (api.MergeRequest, error) {
+	client, err := githubClientFromRepository(repo)
+	if err != nil {
+		return api.MergeRequest{}, err
 	}
-
-	var pullRequests []*github.PullRequest
-	opts := github.ListOptions{PerPage: pageSize}
-	for {
-		data, resp, err := client.PullRequests.List(context.Background(), repo.Namespace, repo.Name, &github.PullRequestListOptions{
-			Head:        options.SourceBranch,
-			Base:        options.TargetBranch,
-			State:       searchState,
-			ListOptions: opts,
-		})
-		if err != nil {
-			return result, fmt.Errorf("failed to list merge requests: %w", err)
-		}
-		pullRequests = append(pullRequests, data...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opts.Page = resp.NextPage
-	}
-
-	for _, pr := range pullRequests {
-		if options.IsDraft != nil && pr.GetDraft() != ptr.Value(options.IsDraft) {
-			continue
-		}
-		if options.IsMerged != nil && pr.GetMerged() != ptr.Value(options.IsMerged) {
-			continue
-		}
-		if options.AuthorId != nil && pr.GetUser().GetID() != ptr.Value(options.AuthorId) {
-			continue
-		}
-		if options.AuthorUsername != nil && pr.GetUser().GetLogin() != ptr.Value(options.AuthorUsername) {
-			continue
-		}
-
-		result = append(result, api.MergeRequest{
-			Id:           pr.GetID(),
-			Number:       pr.GetNumber(),
-			Title:        pr.GetTitle(),
-			Description:  pr.GetBody(),
-			Labels:       githubcommon.ToMergeRequestLabels(pr.Labels),
-			SourceBranch: pr.GetHead().GetRef(),
-			TargetBranch: pr.GetBase().GetRef(),
-			State:        githubcommon.ToStandardMergeRequestState(pr.GetState()),
-			IsMerged:     pr.GetMerged(),
-			IsLocked:     pr.GetLocked(),
-			IsDraft:      pr.GetDraft(),
-			HasConflicts: pr.GetMergeableState() == "dirty", // see https://docs.github.com/en/graphql/reference/enums#mergestatestatus
-			CanMerge:     pr.GetMergeable(),
-			Author:       githubcommon.ToStandardUser(pr.GetUser()),
-			Repository:   repo,
-		})
-	}
-
-	return result, nil
+	return githubcommon.GetMergeRequest(client, repo, number)
 }
 
 func (n Platform) MergeRequestDiff(repo api.Repository, mergeRequest api.MergeRequest) (api.MergeRequestDiff, error) {
-	result := api.MergeRequestDiff{
-		ChangedFiles: []api.MergeRequestFileDiff{},
-	}
 	client, err := githubClientFromRepository(repo)
 	if err != nil {
-		return result, err
+		return api.MergeRequestDiff{}, err
 	}
-
-	diff, _, err := client.PullRequests.ListFiles(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.ListOptions{})
-	if err != nil {
-		return result, fmt.Errorf("failed to get diff: %w", err)
-	}
-
-	for _, d := range diff {
-		result.ChangedFiles = append(result.ChangedFiles, api.MergeRequestFileDiff{
-			IsNew:     d.GetStatus() == "added",
-			IsRenamed: d.GetStatus() == "renamed",
-			IsDeleted: d.GetStatus() == "removed",
-			OldPath:   d.GetPreviousFilename(),
-			NewPath:   d.GetFilename(),
-			OldMode:   "",
-			NewMode:   "",
-			Diff:      d.GetPatch(),
-		})
-	}
-
-	return result, nil
+	return githubcommon.MergeRequestDiff(client, repo, mergeRequest)
 }
 
 func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeRequest, approved bool, message *string) error {
@@ -413,26 +338,7 @@ func (n Platform) SubmitReview(repo api.Repository, mergeRequest api.MergeReques
 	if err != nil {
 		return err
 	}
-
-	if approved {
-		_, _, err := client.PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
-			Event: ptr.Ptr("APPROVE"),
-			Body:  message,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to approve merge request: %w", err)
-		}
-	} else {
-		_, _, err := client.PullRequests.CreateReview(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), &github.PullRequestReviewRequest{
-			Event: ptr.Ptr("REQUEST_CHANGES"),
-			Body:  message,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to approve merge request: %w", err)
-		}
-	}
-
-	return nil
+	return githubcommon.SubmitReview(client, repo, mergeRequest, approved, message)
 }
 
 func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, mergeStrategy api.MergeStrategyOptions) error {
@@ -440,15 +346,7 @@ func (n Platform) Merge(repo api.Repository, mergeRequest api.MergeRequest, merg
 	if err != nil {
 		return err
 	}
-
-	_, _, err = client.PullRequests.Merge(context.Background(), repo.Namespace, repo.Name, int(mergeRequest.Id), "", &github.PullRequestOptions{
-		MergeMethod: githubcommon.ToMergeMethod(mergeStrategy),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to merge merge request: %w", err)
-	}
-
-	return nil
+	return githubcommon.Merge(client, repo, mergeRequest, mergeStrategy)
 }
 
 func (n Platform) Languages(repo api.Repository) (map[string]int, error) {
@@ -605,7 +503,7 @@ func (n Platform) CreateOrUpdateMergeRequest(repository api.Repository, sourceBr
 
 	// search merge request
 	prs, _, err := client.PullRequests.List(context.Background(), repository.Namespace, repository.Name, &github.PullRequestListOptions{
-		Head:  sourceBranch,
+		Head:  githubcommon.HeadFilter(repository.Namespace, sourceBranch),
 		Base:  repository.DefaultBranch,
 		State: "open",
 	})

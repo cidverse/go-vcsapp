@@ -1,6 +1,8 @@
 package gitlabuser
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/cidverse/go-ptr"
@@ -61,7 +63,7 @@ func toPipelineState(state string) api.PipelineState {
 	case "scheduled":
 		return api.PipelineStateScheduled
 	default:
-		return api.PipelineStateFailed
+		return api.PipelineStateUnknown
 	}
 }
 
@@ -88,4 +90,42 @@ func toUser(user *gitlab.BasicUser) api.User {
 		SuspendedAt:         suspendedAt,
 		GlobalAdministrator: false,
 	}
+}
+
+func toMergeRequest(pr *gitlab.BasicMergeRequest, repo api.Repository) api.MergeRequest {
+	return api.MergeRequest{
+		Id:           pr.ID,
+		Number:       int(pr.IID),
+		Title:        pr.Title,
+		Description:  pr.Description,
+		Labels:       toMergeRequestLabels(pr.Labels),
+		HeadSHA:      pr.SHA,
+		SourceBranch: pr.SourceBranch,
+		TargetBranch: pr.TargetBranch,
+		State:        toMergeRequestState(pr.State),
+		IsMerged:     pr.MergedAt != nil,
+		IsLocked:     pr.DiscussionLocked,
+		IsDraft:      pr.Draft,
+		HasConflicts: pr.HasConflicts,
+		CanMerge:     pr.DetailedMergeStatus == "mergeable", // see https://docs.gitlab.com/ee/api/merge_requests.html#merge-status
+		CreatedAt:    pr.CreatedAt,
+		UpdatedAt:    pr.UpdatedAt,
+		Author:       toUser(pr.Author),
+		Repository:   repo,
+	}
+}
+
+// wrapMergeError classifies a merge error by status code, see https://docs.gitlab.com/api/merge_requests/#merge-a-merge-request
+func wrapMergeError(repo api.Repository, mergeRequest api.MergeRequest, resp *gitlab.Response, err error) error {
+	if resp != nil {
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return fmt.Errorf("failed to merge merge request %s!%d: %w: %w", repo.Path, mergeRequest.Number, api.ErrMergeForbidden, err)
+		case http.StatusMethodNotAllowed, http.StatusNotAcceptable, http.StatusConflict, http.StatusUnprocessableEntity:
+			// 405 not mergeable (draft, closed, pipeline, approvals), 406 conflicts, 409 sha mismatch, 422 merge failed
+			return fmt.Errorf("failed to merge merge request %s!%d: %w: %w", repo.Path, mergeRequest.Number, api.ErrNotMergeable, err)
+		}
+	}
+
+	return fmt.Errorf("failed to merge merge request %s!%d: %w", repo.Path, mergeRequest.Number, err)
 }
